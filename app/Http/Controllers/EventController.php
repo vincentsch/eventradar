@@ -2,23 +2,40 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Events\EventStatus;
 use App\Models\Event;
+use DateTimeImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Date;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class EventController extends Controller
 {
+    /** @var list<string> */
+    private const LIST_COLUMNS = [
+        'id',
+        'title',
+        'type',
+        'status',
+        'starts_at',
+        'starts_on_local',
+        'timezone',
+        'venue_name',
+        'locality',
+        'region',
+        'country',
+        'country_code',
+    ];
+
     public function index(Request $request): Response
     {
         return Inertia::render('Events/Index', [
-            'filters' => [
-                'status' => $request->status,
-                'from' => $request->input('from', '2023-01-01'),
-            ],
-            'statuses' => ['draft', 'published', 'cancelled', 'sold_out'],
+            'filters' => $this->filters($request),
+            'statuses' => EventStatus::publicValues(),
         ]);
     }
 
@@ -35,12 +52,74 @@ class EventController extends Controller
         ]);
     }
 
-    public function show(Event $event): Response
+    public function show(string $event): Response
     {
-        $event->load('user');
+        $record = Event::query()
+            ->select([
+                'id',
+                'title',
+                'description',
+                'organizer_name',
+                'venue_name',
+                'starts_at',
+                'ends_at',
+                'timezone',
+                'starts_on_local',
+                'locality',
+                'region',
+                'country',
+                'country_code',
+                'latitude',
+                'longitude',
+                'image_set_key',
+                'status',
+                'type',
+                'tags',
+                'minimum_price',
+                'currency_code',
+                'capacity',
+            ])
+            ->with(['imageSet.images' => fn ($query) => $query
+                ->select(['id', 'image_set_key', 'role', 'path', 'width', 'height', 'alt'])
+                ->orderBy('role')])
+            ->whereKey($event)
+            ->whereIn('status', EventStatus::publicValues())
+            ->where('ends_at', '>', Date::now('UTC'))
+            ->firstOrFail();
 
         return Inertia::render('Events/Show', [
-            'event' => $event,
+            'event' => [
+                ...$record->only([
+                    'id',
+                    'title',
+                    'description',
+                    'organizer_name',
+                    'venue_name',
+                    'starts_at',
+                    'ends_at',
+                    'timezone',
+                    'starts_on_local',
+                    'locality',
+                    'region',
+                    'country',
+                    'country_code',
+                    'latitude',
+                    'longitude',
+                    'status',
+                    'type',
+                    'tags',
+                    'minimum_price',
+                    'currency_code',
+                    'capacity',
+                ]),
+                'images' => $record->imageSet?->images->map(fn ($image): array => $image->only([
+                    'role',
+                    'path',
+                    'width',
+                    'height',
+                    'alt',
+                ]))->values()->all() ?? [],
+            ],
         ]);
     }
 
@@ -50,10 +129,16 @@ class EventController extends Controller
     private function loadListing(Request $request): array
     {
         $start = microtime(true);
+        $filters = $this->filters($request);
 
-        $events = Event::with('user')
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->orderByDesc('created_time')
+        $events = Event::query()
+            ->select(self::LIST_COLUMNS)
+            ->whereIn('status', EventStatus::publicValues())
+            ->where('ends_at', '>', Date::now('UTC'))
+            ->when($filters['status'] !== null, fn (Builder $query) => $query->where('status', $filters['status']))
+            ->when($filters['from'] !== null, fn (Builder $query) => $query->where('starts_on_local', '>=', $filters['from']))
+            ->orderBy('starts_at')
+            ->orderBy('id')
             ->paginate(50)
             ->withQueryString();
 
@@ -63,5 +148,24 @@ class EventController extends Controller
         ];
 
         return [$events, $stats];
+    }
+
+    /** @return array{status: ?string, from: ?string} */
+    private function filters(Request $request): array
+    {
+        $status = $request->string('status')->trim()->toString();
+        $from = $request->string('from')->trim()->toString();
+
+        return [
+            'status' => in_array($status, EventStatus::publicValues(), true) ? $status : null,
+            'from' => $this->isValidDate($from) ? $from : null,
+        ];
+    }
+
+    private function isValidDate(string $value): bool
+    {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+
+        return $date !== false && $date->format('Y-m-d') === $value;
     }
 }

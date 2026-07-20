@@ -72,6 +72,9 @@
         "types:check": [
             "phpstan analyse"
         ],
+        "test:mysql": [
+            "@php vendor/bin/pest --configuration=phpunit.mysql.xml"
+        ],
         "test": [
             "@php artisan config:clear --ansi",
             "@lint:check",

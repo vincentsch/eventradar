@@ -6,14 +6,21 @@ import { Button } from '@/components/ui/button';
 
 interface EventRow {
     id: string;
+    title: string;
     type: string;
     status: string;
-    created_time: number | null;
-    user: { id: number; name: string } | null;
+    starts_at: string;
+    starts_on_local: string;
+    timezone: string;
+    venue_name: string;
+    locality: string;
+    region: string | null;
+    country: string;
+    country_code: string;
 }
 
 const props = defineProps<{
-    filters: { status: string | null; from: string };
+    filters: { status: string | null; from: string | null };
     statuses: string[];
 }>();
 
@@ -96,14 +103,28 @@ const statusVariant = (status: string) => {
     switch (status) {
         case 'published':
             return 'default';
-        case 'cancelled':
-            return 'destructive';
         case 'sold_out':
             return 'secondary';
         default:
             return 'outline';
     }
 };
+
+const formatStart = (event: EventRow) =>
+    new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: event.timezone,
+        timeZoneName: 'short',
+    }).format(new Date(event.starts_at));
+
+const formatLocation = (event: EventRow) =>
+    [event.venue_name, event.locality, event.region, event.country]
+        .filter(Boolean)
+        .join(', ');
 
 onMounted(() => {
     observer = new IntersectionObserver(
@@ -174,11 +195,11 @@ onBeforeUnmount(() => observer?.disconnect());
             <table class="w-full text-sm">
                 <thead class="border-b bg-muted/50 text-left">
                     <tr>
-                        <th class="px-3 py-2 font-medium">ID</th>
+                        <th class="px-3 py-2 font-medium">Event</th>
                         <th class="px-3 py-2 font-medium">Type</th>
                         <th class="px-3 py-2 font-medium">Status</th>
-                        <th class="px-3 py-2 font-medium">User</th>
-                        <th class="px-3 py-2 font-medium">Time</th>
+                        <th class="px-3 py-2 font-medium">Location</th>
+                        <th class="px-3 py-2 font-medium">Starts</th>
                         <th class="px-3 py-2"></th>
                     </tr>
                 </thead>
@@ -188,8 +209,13 @@ onBeforeUnmount(() => observer?.disconnect());
                         :key="event.id"
                         class="border-b last:border-0"
                     >
-                        <td class="px-3 py-2 font-mono text-xs">
-                            {{ event.id }}
+                        <td class="px-3 py-2">
+                            <span class="font-medium">{{ event.title }}</span>
+                            <span
+                                class="mt-1 block font-mono text-xs text-muted-foreground"
+                            >
+                                {{ event.id }}
+                            </span>
                         </td>
                         <td class="px-3 py-2">{{ event.type }}</td>
                         <td class="px-3 py-2">
@@ -197,9 +223,11 @@ onBeforeUnmount(() => observer?.disconnect());
                                 event.status
                             }}</Badge>
                         </td>
-                        <td class="px-3 py-2">{{ event.user?.name ?? '—' }}</td>
-                        <td class="px-3 py-2 font-mono text-xs">
-                            {{ event.created_time }}
+                        <td class="max-w-72 px-3 py-2 text-muted-foreground">
+                            {{ formatLocation(event) }}
+                        </td>
+                        <td class="px-3 py-2 text-xs whitespace-nowrap">
+                            {{ formatStart(event) }}
                         </td>
                         <td class="px-3 py-2 text-right">
                             <Link

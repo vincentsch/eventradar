@@ -44,3 +44,27 @@ implementation. Until the MySQL replacement and search rebuild are explicitly ap
 - do not manually delete the SQLite file or Docker volumes.
 
 Normal `./vendor/bin/sail down` is safe because it leaves named volumes intact.
+
+## Event seed profiles
+
+The event seeder is deterministic and defaults to the 10,000-row `dev` profile. Use `smoke` for a
+fast 500-row reset. The 1,250,000-row `full` profile is intentionally refused unless it receives an
+explicit acknowledgement:
+
+```bash
+EVENT_SEED_PROFILE=smoke ./vendor/bin/sail artisan migrate:fresh --seed
+./vendor/bin/sail artisan migrate:fresh --seed
+EVENT_SEED_PROFILE=full EVENT_SEED_ALLOW_FULL=true ./vendor/bin/sail artisan migrate:fresh --seed
+```
+
+`EVENT_SEED` and `EVENT_SEED_REFERENCE_AT` pin generated values, including UUIDv7 identifiers and
+event dates. The seeder refuses to append if `events` already contains any row; use a deliberate
+MySQL reset instead. Each insert batch runs in its own transaction so the full profile does not hold
+one very large transaction open.
+
+Run the fast SQLite-backed suite on the host and the database-contract suite inside Sail:
+
+```bash
+php artisan test
+./vendor/bin/sail composer test:mysql
+```

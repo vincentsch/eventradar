@@ -2,323 +2,217 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Events\EventType;
+use App\Services\Events\DeterministicEventGenerator;
+use App\Services\Events\EventImageCatalogueImporter;
+use App\Services\Events\EventSeedOptions;
+use DateTimeZone;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 class EventSeeder extends Seeder
 {
-    /**
-     * Approximate encoded size of a single payload, in bytes. Dial this to
-     * change the on-disk footprint of the seeded dataset.
-     */
-    public const PAYLOAD_AVG_BYTES = 1500;
-
-    public const NUM_USERS = 3000;
-
-    private const CHUNK = 4000;
-
-    /** Event categories (stored in the `type` column). */
-    private const TYPES = ['concert', 'conference', 'meetup', 'workshop', 'festival', 'sports', 'networking', 'exhibition'];
-
-    private const STATUSES = ['draft', 'published', 'cancelled', 'sold_out'];
-
-    private const NAME_ADJECTIVES = ['Annual', 'Global', 'Summer', 'Winter', 'Underground', 'Open', 'International', 'Live', 'Midnight', 'Sunset', 'Urban', 'Indie', 'Grand', 'Pop-up', 'Virtual'];
-
-    private const NAME_THEMES = ['Synthwave', 'Founders', 'Jazz', 'Tech', 'Food & Wine', 'Yoga', 'Startup', 'Design', 'Climate', 'Gaming', 'Film', 'Book', 'Marathon', 'Comedy', 'Art'];
-
-    private const NAME_FORMATS = ['Festival', 'Meetup', 'Conference', 'Summit', 'Workshop', 'Expo', 'Showcase', 'Gala', 'Jam', 'Retreat', 'Fair', 'Night', 'Tour', 'Symposium', 'Block Party'];
-
-    /**
-     * Anchor coordinates [lat, lng] for major cities across the US, Canada,
-     * Mexico and Europe, plus a few global hubs. Each row is jittered around
-     * one of these anchors.
-     */
-    private const CITY_ANCHORS = [
-        // United States
-        [40.7128, -74.0060], [34.0522, -118.2437], [41.8781, -87.6298], [29.7604, -95.3698],
-        [33.4484, -112.0740], [39.9526, -75.1652], [29.4241, -98.4936], [32.7157, -117.1611],
-        [32.7767, -96.7970], [37.3382, -121.8863], [30.2672, -97.7431], [37.7749, -122.4194],
-        [47.6062, -122.3321], [39.7392, -104.9903], [42.3601, -71.0589], [36.1699, -115.1398],
-        [25.7617, -80.1918], [33.7490, -84.3880], [38.9072, -77.0369], [36.1627, -86.7816],
-        [45.5152, -122.6784], [29.9511, -90.0715],
-        // Canada
-        [43.6532, -79.3832], [45.5019, -73.5674], [49.2827, -123.1207], [51.0447, -114.0719],
-        [45.4215, -75.6972], [53.5461, -113.4938], [46.8139, -71.2080], [49.8951, -97.1384],
-        // Mexico
-        [19.4326, -99.1332], [20.6597, -103.3496], [25.6866, -100.3161], [19.0414, -98.2063],
-        [32.5149, -117.0382], [21.1619, -86.8515], [20.9674, -89.5926],
-        // Europe
-        [51.5074, -0.1278], [48.8566, 2.3522], [52.5200, 13.4050], [40.4168, -3.7038],
-        [41.9028, 12.4964], [52.3676, 4.9041], [41.3851, 2.1734], [48.1351, 11.5820],
-        [45.4642, 9.1900], [48.2082, 16.3738], [50.0755, 14.4378], [38.7223, -9.1393],
-        [53.3498, -6.2603], [55.6761, 12.5683], [59.3293, 18.0686], [59.9139, 10.7522],
-        [60.1699, 24.9384], [50.8503, 4.3517], [47.3769, 8.5417], [52.2297, 21.0122],
-        [47.4979, 19.0402], [37.9838, 23.7275], [45.7640, 4.8357], [53.5511, 9.9937],
-        [53.4808, -2.2426], [55.9533, -3.1883], [50.1109, 8.6821], [50.0647, 19.9450],
-        [41.1579, -8.6291], [40.8518, 14.2681],
-        // A few global hubs
-        [35.6762, 139.6503], [37.5665, 126.9780], [1.3521, 103.8198], [-33.8688, 151.2093],
-        [-37.8136, 144.9631], [25.2048, 55.2708], [-23.5505, -46.6333], [-34.6037, -58.3816],
+    public const INSERT_COLUMNS = [
+        'id',
+        'user_id',
+        'title',
+        'description',
+        'organizer_name',
+        'venue_name',
+        'starts_at',
+        'ends_at',
+        'timezone',
+        'starts_on_local',
+        'location_key',
+        'locality',
+        'region',
+        'country',
+        'country_code',
+        'latitude',
+        'longitude',
+        'image_set_key',
+        'status',
+        'type',
+        'tags',
+        'minimum_price',
+        'currency_code',
+        'capacity',
+        'payload',
+        'created_at',
+        'updated_at',
     ];
 
-    public function run(): void
-    {
-        $rows = (int) config('events.seed_rows');
+    public function run(
+        EventImageCatalogueImporter $imageCatalogue,
+        DeterministicEventGenerator $generator,
+    ): void {
+        $options = EventSeedOptions::fromConfig();
 
-        $this->command->info("Seeding {$rows} events...");
+        if (DB::table('events')->exists()) {
+            throw new RuntimeException('Refusing to append seeded events to a non-empty events table.');
+        }
 
-        $start = microtime(true);
+        $startedAt = microtime(true);
+        $this->command->info(
+            "Seeding {$options->rowCount} deterministic events using the [{$options->profile}] profile...",
+        );
 
-        $this->withSeedingPragmas(function () use ($rows) {
-            $this->ensureUsers();
-            $this->insertEvents($rows);
-        });
+        $imageCatalogue->replace();
+        $ownerIds = $this->ensureUsers($options);
+        $locations = $this->locations();
+        $imageSetsByType = array_fill_keys(EventType::values(), []);
 
-        $elapsed = round(microtime(true) - $start, 1);
-        $rate = $elapsed > 0 ? round($rows / $elapsed) : $rows;
-        $this->command->info("Done. {$rows} events in {$elapsed}s ({$rate} rows/s).");
-    }
+        foreach (DB::table('event_image_sets')->orderBy('key')->get(['key', 'category']) as $set) {
+            if (! is_string($set->category) || ! is_string($set->key) || ! isset($imageSetsByType[$set->category])) {
+                throw new RuntimeException('The event image catalogue contains an invalid set.');
+            }
 
-    /**
-     * Bulk-insert $count event rows using cheap, template-driven payloads.
-     * Reused by the perf tests to top up the dataset to a target size.
-     */
-    public function insertEvents(int $count): void
-    {
-        $this->ensureUsers();
+            $imageSetsByType[$set->category][] = $set->key;
+        }
 
         DB::connection()->disableQueryLog();
+        $batchSize = self::batchSizeForPlaceholderBudget(
+            DB::connection()->getDriverName() === 'sqlite'
+                ? min(30_000, (int) config('events.seed_placeholder_budget'))
+                : (int) config('events.seed_placeholder_budget'),
+        );
 
-        $template = $this->payloadTemplate();
-        $now = date('Y-m-d H:i:s');
-        $userMax = self::NUM_USERS;
-
-        $year = 365 * 24 * 60 * 60;
-        $now_ts = time();
-        // Event start times span roughly one year in the past to one year out.
-        $startTime = $now_ts - $year;
-        $endTime = $now_ts + $year;
-
-        $typeWeights = $this->cumulativeWeights([20, 14, 22, 12, 12, 8, 8, 4]);
-        $statusWeights = $this->cumulativeWeights([12, 70, 8, 10]);
-        $anchorCount = count(self::CITY_ANCHORS);
-
-        $remaining = $count;
-        $done = 0;
-
-        while ($remaining > 0) {
-            $batchSize = min(self::CHUNK, $remaining);
+        for ($offset = 0; $offset < $options->rowCount; $offset += $batchSize) {
+            $limit = min($options->rowCount, $offset + $batchSize);
             $batch = [];
 
-            for ($i = 0; $i < $batchSize; $i++) {
-                $type = self::TYPES[$this->pick($typeWeights)];
-                $status = self::STATUSES[$this->pick($statusWeights)];
-                $startsAt = mt_rand($startTime, $endTime);
-                $endsAt = $startsAt + mt_rand(3600, 3 * 24 * 3600);
-
-                $anchor = self::CITY_ANCHORS[mt_rand(0, $anchorCount - 1)];
-                $latitude = round($anchor[0] + (mt_rand(-500, 500) / 1000), 7);
-                $longitude = round($anchor[1] + (mt_rand(-500, 500) / 1000), 7);
-
-                $name = self::NAME_ADJECTIVES[array_rand(self::NAME_ADJECTIVES)]
-                    .' '.self::NAME_THEMES[array_rand(self::NAME_THEMES)]
-                    .' '.self::NAME_FORMATS[array_rand(self::NAME_FORMATS)];
-
-                $payload = strtr($template, [
-                    '{{NAME}}' => $this->escape($name),
-                    '{{CATEGORY}}' => $type,
-                    '{{ORGANIZER}}' => 'Organizer '.mt_rand(1, 9999),
-                    '{{VENUE}}' => $this->escape($this->venueName()),
-                    '{{LAT}}' => (string) $latitude,
-                    '{{LNG}}' => (string) $longitude,
-                    '{{STARTS}}' => (string) $startsAt,
-                    '{{ENDS}}' => (string) $endsAt,
-                    '{{CAPACITY}}' => (string) mt_rand(20, 50000),
-                    '{{PRICE}}' => (string) (mt_rand(0, 25000) / 100),
-                ]);
-
-                $batch[] = [
-                    'id' => $this->uuidv4(),
-                    'user_id' => mt_rand(1, $userMax),
-                    'type' => $type,
-                    'status' => $status,
-                    'created_time' => $startsAt,
-                    'latitude' => $latitude,
-                    'longitude' => $longitude,
-                    'payload' => $payload,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
+            for ($ordinal = $offset; $ordinal < $limit; $ordinal++) {
+                $row = $generator->row($ordinal, $options, $ownerIds, $imageSetsByType, $locations);
+                $batch[] = array_replace(array_fill_keys(self::INSERT_COLUMNS, null), $row);
             }
 
-            DB::transaction(function () use ($batch) {
-                DB::table('events')->insert($batch);
-            });
+            DB::transaction(fn () => DB::table('events')->insert($batch));
 
-            $done += $batchSize;
-            $remaining -= $batchSize;
-
-            if ($done % (self::CHUNK * 25) === 0 || $remaining === 0) {
-                $this->command->getOutput()->writeln("  inserted {$done}/{$count}");
+            if ($limit === $options->rowCount || intdiv($limit, 100_000) > intdiv($offset, 100_000)) {
+                $this->command->getOutput()->writeln("  inserted {$limit}/{$options->rowCount}");
             }
         }
+
+        $elapsed = microtime(true) - $startedAt;
+        $rate = $elapsed > 0 ? (int) round($options->rowCount / $elapsed) : $options->rowCount;
+        $memory = round(memory_get_peak_usage(true) / 1_048_576, 1);
+
+        $this->command->info(sprintf(
+            'Seed complete in %.2fs (%d rows/s, %s MiB peak memory).',
+            $elapsed,
+            $rate,
+            $memory,
+        ));
     }
 
-    private function ensureUsers(): void
+    public static function batchSizeForPlaceholderBudget(int $placeholderBudget): int
     {
-        $existing = DB::table('users')->count();
-        if ($existing >= self::NUM_USERS) {
-            return;
+        if ($placeholderBudget < count(self::INSERT_COLUMNS)) {
+            throw new RuntimeException('The seed placeholder budget is smaller than one event row.');
         }
 
-        $password = Hash::make('password');
-        $now = date('Y-m-d H:i:s');
+        return intdiv($placeholderBudget, count(self::INSERT_COLUMNS));
+    }
 
-        $remaining = self::NUM_USERS - $existing;
-        $offset = $existing;
+    /** @return list<int> */
+    private function ensureUsers(EventSeedOptions $options): array
+    {
+        $ownerCount = (int) config('events.seed_owner_count');
+        $emails = ['reviewer@example.test'];
 
-        while ($remaining > 0) {
-            $batchSize = min(1000, $remaining);
-            $batch = [];
+        for ($number = 1; $number <= $ownerCount; $number++) {
+            $emails[] = sprintf('event-owner-%03d@example.test', $number);
+        }
 
-            for ($i = 0; $i < $batchSize; $i++) {
-                $n = $offset + $i + 1;
-                $batch[] = [
-                    'name' => "User {$n}",
-                    'email' => "user{$n}@example.test",
-                    'email_verified_at' => $now,
+        $existingEmails = DB::table('users')->whereIn('email', $emails)->pluck('email')->all();
+        $missingEmails = array_values(array_diff($emails, $existingEmails));
+
+        if ($missingEmails !== []) {
+            $timestamp = $options->referenceAt->format('Y-m-d H:i:s');
+            $password = Hash::make('password');
+            $rows = [];
+
+            foreach ($missingEmails as $email) {
+                $rows[] = [
+                    'name' => $email === 'reviewer@example.test'
+                        ? 'Assessment Reviewer'
+                        : 'Event Owner '.substr($email, 12, 3),
+                    'email' => $email,
+                    'email_verified_at' => $timestamp,
                     'password' => $password,
-                    'created_at' => $now,
-                    'updated_at' => $now,
+                    'remember_token' => null,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp,
                 ];
             }
 
-            DB::table('users')->insert($batch);
-            $offset += $batchSize;
-            $remaining -= $batchSize;
+            DB::table('users')->insert($rows);
         }
+
+        $ownerEmails = array_slice($emails, 1);
+        $ownerIds = [];
+
+        foreach (DB::table('users')
+            ->whereIn('email', $ownerEmails)
+            ->orderBy('email')
+            ->pluck('id') as $id) {
+            $ownerIds[] = (int) $id;
+        }
+
+        if (count($ownerIds) !== $ownerCount) {
+            throw new RuntimeException("Expected {$ownerCount} deterministic event owners.");
+        }
+
+        return $ownerIds;
     }
 
     /**
-     * Build a ~PAYLOAD_AVG_BYTES payload string once, with placeholder tokens
-     * that are cheaply substituted per row.
+     * @return list<array{key: string, locality: string, region: ?string, country: string, country_code: string, timezone: string, latitude: float, longitude: float}>
      */
-    private function payloadTemplate(): string
+    private function locations(): array
     {
-        $payload = [
-            'name' => '{{NAME}}',
-            'category' => '{{CATEGORY}}',
-            'description' => 'Join us for {{NAME}} — a {{CATEGORY}} you won\'t want to miss.',
-            'organizer' => [
-                'name' => '{{ORGANIZER}}',
-                'verified' => true,
-            ],
-            'venue' => [
-                'name' => '{{VENUE}}',
-                'capacity' => '{{CAPACITY}}',
-            ],
-            'location' => [
-                'lat' => '{{LAT}}',
-                'lng' => '{{LNG}}',
-            ],
-            'schedule' => [
-                'starts_at' => '{{STARTS}}',
-                'ends_at' => '{{ENDS}}',
-            ],
-            'pricing' => [
-                'currency' => 'USD',
-                'min_price' => '{{PRICE}}',
-            ],
-            'tags' => ['live', 'in-person', 'featured', 'all-ages'],
-            'notes' => '',
-        ];
+        $locations = require database_path('data/gazetteer.php');
 
-        $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
-        $pad = self::PAYLOAD_AVG_BYTES - strlen($encoded);
-        if ($pad > 0) {
-            $payload['notes'] = str_repeat('Lorem ipsum dolor sit amet consectetur adipiscing elit. ', (int) ceil($pad / 56));
-            $payload['notes'] = substr($payload['notes'], 0, $pad);
+        if (! is_array($locations) || count($locations) !== 75) {
+            throw new RuntimeException('The seed gazetteer must contain exactly 75 locations.');
         }
 
-        return json_encode($payload, JSON_THROW_ON_ERROR);
-    }
+        $validated = [];
 
-    private function venueName(): string
-    {
-        $a = ['The Grand', 'Riverside', 'Downtown', 'Skyline', 'Harbor', 'Old Town', 'Central', 'Sunset'];
-        $b = ['Hall', 'Arena', 'Pavilion', 'Gardens', 'Warehouse', 'Theatre', 'Rooftop', 'Stadium'];
-
-        return $a[array_rand($a)].' '.$b[array_rand($b)];
-    }
-
-    private function escape(string $value): string
-    {
-        return str_replace(['\\', '"'], ['\\\\', '\\"'], $value);
-    }
-
-    private function uuidv4(): string
-    {
-        $data = random_bytes(16);
-        $data[6] = chr((ord($data[6]) & 0x0F) | 0x40);
-        $data[8] = chr((ord($data[8]) & 0x3F) | 0x80);
-
-        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-    }
-
-    /**
-     * @param  array<int, int>  $weights
-     * @return array<int, int>
-     */
-    private function cumulativeWeights(array $weights): array
-    {
-        $cumulative = [];
-        $sum = 0;
-        foreach ($weights as $w) {
-            $sum += $w;
-            $cumulative[] = $sum;
-        }
-
-        return $cumulative;
-    }
-
-    /** @param array<int,int> $cumulative */
-    private function pick(array $cumulative): int
-    {
-        if ($cumulative === []) {
-            throw new \InvalidArgumentException('At least one cumulative weight is required.');
-        }
-
-        $total = $cumulative[array_key_last($cumulative)];
-        $roll = mt_rand(1, $total);
-        foreach ($cumulative as $index => $threshold) {
-            if ($roll <= $threshold) {
-                return $index;
+        foreach ($locations as $location) {
+            if (! is_array($location)
+                || ! is_string($location['key'] ?? null)
+                || ! is_string($location['locality'] ?? null)
+                || (! is_string($location['region'] ?? null) && ($location['region'] ?? null) !== null)
+                || ! is_string($location['country'] ?? null)
+                || ! is_string($location['country_code'] ?? null)
+                || ! is_string($location['timezone'] ?? null)
+                || ! is_float($location['latitude'] ?? null)
+                || ! is_float($location['longitude'] ?? null)) {
+                throw new RuntimeException('The seed gazetteer contains an invalid location.');
             }
+
+            new DateTimeZone($location['timezone']);
+            $validated[] = [
+                'key' => $location['key'],
+                'locality' => $location['locality'],
+                'region' => $location['region'],
+                'country' => $location['country'],
+                'country_code' => $location['country_code'],
+                'timezone' => $location['timezone'],
+                'latitude' => $location['latitude'],
+                'longitude' => $location['longitude'],
+            ];
         }
 
-        return 0;
-    }
+        $keys = array_column($validated, 'key');
 
-    private function withSeedingPragmas(callable $callback): void
-    {
-        $driver = DB::connection()->getDriverName();
-        if ($driver !== 'sqlite') {
-            $callback();
-
-            return;
+        if (count(array_unique($keys)) !== count($validated)) {
+            throw new RuntimeException('The seed gazetteer contains duplicate location keys.');
         }
 
-        DB::statement('PRAGMA journal_mode = MEMORY');
-        DB::statement('PRAGMA synchronous = OFF');
-        DB::statement('PRAGMA temp_store = MEMORY');
-        DB::statement('PRAGMA cache_size = -64000');
-
-        try {
-            $callback();
-        } finally {
-            DB::statement('PRAGMA journal_mode = WAL');
-            DB::statement('PRAGMA synchronous = NORMAL');
-        }
+        return $validated;
     }
 }
