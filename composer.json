@@ -75,6 +75,9 @@
         "test:mysql": [
             "@php vendor/bin/pest --configuration=phpunit.mysql.xml"
         ],
+        "test:meilisearch": [
+            "@php vendor/bin/pest --configuration=phpunit.meilisearch.xml"
+        ],
         "test": [
             "@php artisan config:clear --ansi",
             "@lint:check",
