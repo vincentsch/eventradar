@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Domain\Events\EventType;
+use App\Services\Discovery\PublicEventFilterOptions;
 use App\Services\Events\DeterministicEventGenerator;
 use App\Services\Events\EventImageCatalogueImporter;
 use App\Services\Events\EventSeedOptions;
@@ -48,6 +49,7 @@ class EventSeeder extends Seeder
     public function run(
         EventImageCatalogueImporter $imageCatalogue,
         DeterministicEventGenerator $generator,
+        PublicEventFilterOptions $filterOptions,
     ): void {
         $options = EventSeedOptions::fromConfig();
 
@@ -106,6 +108,8 @@ class EventSeeder extends Seeder
             $rate,
             $memory,
         ));
+
+        $filterOptions->forget();
     }
 
     public static function batchSizeForPlaceholderBudget(int $placeholderBudget): int

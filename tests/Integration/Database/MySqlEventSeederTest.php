@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Event;
+use App\Services\Discovery\PublicEventFilterOptions;
 use Carbon\CarbonImmutable;
 use Database\Seeders\EventSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,13 +34,19 @@ it('requires an explicit opt-in for the local demo administrator', function () {
 });
 
 it('seeds the deterministic smoke profile and refuses accidental append', function () {
+    $filterOptions = app(PublicEventFilterOptions::class);
+    $instant = CarbonImmutable::parse('2026-07-20 12:00:00', 'UTC');
+
+    expect($filterOptions->locations($instant))->toBeEmpty();
+
     $this->seed(EventSeeder::class);
 
     expect(Event::query()->count())->toBe(500)
         ->and(DB::table('event_image_sets')->count())->toBe(16)
         ->and(DB::table('event_images')->count())->toBe(32)
         ->and(DB::table('users')->where('email', 'reviewer@example.test')->exists())->toBeTrue()
-        ->and(DB::table('users')->where('email', 'like', 'event-owner-%@example.test')->count())->toBe(128);
+        ->and(DB::table('users')->where('email', 'like', 'event-owner-%@example.test')->count())->toBe(128)
+        ->and($filterOptions->locations($instant))->not->toBeEmpty();
 
     $events = DB::table('events')
         ->orderBy('id')
