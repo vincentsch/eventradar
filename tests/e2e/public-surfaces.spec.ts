@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const publicSurfaces = [
+    { path: '/', label: 'home discovery' },
     { path: '/events', label: 'events' },
     { path: '/events-visual-1', label: 'visual one' },
     { path: '/events-visual-2', label: 'visual two' },
@@ -12,7 +13,9 @@ test('public assessment surfaces respond, hydrate, and fit the viewport', async 
 }) => {
     const runtimeFailures: string[] = [];
 
-    page.on('pageerror', (error) => runtimeFailures.push(`pageerror: ${error.message}`));
+    page.on('pageerror', (error) =>
+        runtimeFailures.push(`pageerror: ${error.message}`),
+    );
     page.on('console', (message) => {
         if (message.type() === 'error') {
             runtimeFailures.push(`console: ${message.text()}`);
@@ -27,12 +30,22 @@ test('public assessment surfaces respond, hydrate, and fit the viewport', async 
     });
 
     for (const surface of publicSurfaces) {
-        const response = await page.goto(surface.path, { waitUntil: 'networkidle' });
+        const response = await page.goto(surface.path, {
+            waitUntil: 'networkidle',
+        });
 
-        expect(response, `${surface.label} should return a document response`).not.toBeNull();
-        expect(response?.status(), `${surface.label} should not redirect or fail`).toBe(200);
+        expect(
+            response,
+            `${surface.label} should return a document response`,
+        ).not.toBeNull();
+        expect(
+            response?.status(),
+            `${surface.label} should not redirect or fail`,
+        ).toBe(200);
         await expect(page.locator('#app')).toBeVisible();
-        await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+        await expect(
+            page.getByRole('heading', { level: 1 }).first(),
+        ).toBeVisible();
 
         const layout = await page.evaluate(() => ({
             viewport: window.innerWidth,
