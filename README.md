@@ -120,11 +120,14 @@ important baseline problems:
 
 ## AI-assisted engineering workflow
 
-I treat AI agents as an engineering team and myself as the lead developer. They help across the
-work with investigation, feedback, suggestions, implementation, testing, and review, but I retain
-control of the product direction, architecture, trade-offs, and final code. Implementation requests
-are deliberately specific about the intended outcome, constraints, and exclusions, and I inspect
-the resulting code and behavior before accepting it. This is agentic engineering, not vibe coding.
+I use AI agents throughout the engineering process as my team, with myself as the lead developer.
+They provide investigation, feedback, suggestions, implementation, testing, and review, while I
+make the decisions and remain in control of the product direction, architecture, trade-offs, and
+final code.
+
+Implementation instructions are detailed and specific to the work at hand, including exactly what
+to do, what not to do, and which constraints to preserve. I inspect the resulting code and behavior
+before accepting it. This is agentic engineering, not vibe coding.
 
 ## Local setup
 
