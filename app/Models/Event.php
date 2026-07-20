@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
@@ -80,5 +81,11 @@ class Event extends Model
     public function imageSet(): BelongsTo
     {
         return $this->belongsTo(EventImageSet::class, 'image_set_key', 'key');
+    }
+
+    /** @return HasMany<EventAttendance, $this> */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(EventAttendance::class);
     }
 }

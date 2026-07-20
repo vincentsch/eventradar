@@ -4,14 +4,12 @@ export type User = {
     email: string;
     avatar?: string;
     email_verified_at: string | null;
+    is_admin: boolean;
     two_factor_enabled?: boolean;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown;
 };
 
 export type Auth = {
-    user: User;
+    user: User | null;
 };
 
 /* @chisel-passkeys */

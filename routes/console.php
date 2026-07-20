@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('attendance:dispatch-reminders')
+    ->everyMinute()
+    ->withoutOverlapping(10);

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Attendance\DeliveryStatus;
 use App\Domain\Events\EventStatus;
 use App\Domain\Events\EventType;
 use App\Http\Controllers\Controller;
+use App\Models\AttendanceDelivery;
 use App\Models\Event;
+use App\Models\EventAttendance;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,12 +19,18 @@ class DashboardController extends Controller
     {
         $statusCounts = $this->countsBy('status', EventStatus::values());
         $typeCounts = $this->countsBy('type', EventType::values());
+        $activeAttendances = EventAttendance::query()->whereNull('cancelled_at')->count();
+        $failedDeliveries = AttendanceDelivery::query()
+            ->where('status', DeliveryStatus::Failed->value)
+            ->count();
 
         return Inertia::render('Admin/Dashboard', [
             'summary' => [
                 'total' => array_sum($statusCounts),
                 'statuses' => $statusCounts,
                 'types' => $typeCounts,
+                'active_attendances' => $activeAttendances,
+                'failed_deliveries' => $failedDeliveries,
             ],
         ]);
     }

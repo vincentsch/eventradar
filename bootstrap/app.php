@@ -1,6 +1,8 @@
 <?php
 
+use App\Console\Commands\DispatchAttendanceReminders;
 use App\Console\Commands\RebuildEventSearchIndex;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -15,8 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withCommands([RebuildEventSearchIndex::class])
+    ->withCommands([DispatchAttendanceReminders::class, RebuildEventSearchIndex::class])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'admin' => EnsureUserIsAdmin::class,
+        ]);
+
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->web(append: [

@@ -40,7 +40,14 @@ interface AdminEvent {
     images: EventImage[];
 }
 
-const props = defineProps<{ event: AdminEvent }>();
+const props = defineProps<{
+    event: AdminEvent;
+    attendance: {
+        going: number;
+        interested: number;
+        total: number;
+    };
+}>();
 
 const formatDateTime = (value: string) =>
     new Intl.DateTimeFormat(undefined, {
@@ -145,8 +152,8 @@ const location = [
                                     Coordinates
                                 </dt>
                                 <dd class="mt-1 font-mono text-sm">
-                                    {{ event.latitude ?? '—' }},
-                                    {{ event.longitude ?? '—' }}
+                                    {{ event.latitude ?? 'Not set' }},
+                                    {{ event.longitude ?? 'Not set' }}
                                 </dd>
                             </div>
                             <div>
@@ -214,7 +221,7 @@ const location = [
                                     Price from
                                 </dt>
                                 <dd>
-                                    {{ event.minimum_price ?? '—' }}
+                                    {{ event.minimum_price ?? 'Not set' }}
                                     {{ event.currency_code ?? '' }}
                                 </dd>
                             </div>
@@ -222,7 +229,8 @@ const location = [
                                 <dt class="text-muted-foreground">Capacity</dt>
                                 <dd>
                                     {{
-                                        event.capacity?.toLocaleString() ?? '—'
+                                        event.capacity?.toLocaleString() ??
+                                        'Not set'
                                     }}
                                 </dd>
                             </div>
@@ -236,6 +244,44 @@ const location = [
                                 </dd>
                             </div>
                         </dl>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader><CardTitle>Attendance</CardTitle></CardHeader>
+                    <CardContent class="space-y-4">
+                        <div class="grid grid-cols-3 gap-3 text-center">
+                            <div class="rounded-lg bg-muted p-3">
+                                <p class="text-2xl font-semibold tabular-nums">
+                                    {{ attendance.total.toLocaleString() }}
+                                </p>
+                                <p class="text-xs text-muted-foreground">
+                                    Total
+                                </p>
+                            </div>
+                            <div class="rounded-lg bg-muted p-3">
+                                <p class="text-2xl font-semibold tabular-nums">
+                                    {{ attendance.going.toLocaleString() }}
+                                </p>
+                                <p class="text-xs text-muted-foreground">
+                                    Going
+                                </p>
+                            </div>
+                            <div class="rounded-lg bg-muted p-3">
+                                <p class="text-2xl font-semibold tabular-nums">
+                                    {{ attendance.interested.toLocaleString() }}
+                                </p>
+                                <p class="text-xs text-muted-foreground">
+                                    Interested
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            :href="`/admin/events/${event.id}/attendees`"
+                            class="inline-flex text-sm font-medium text-primary hover:underline"
+                        >
+                            View attendee list
+                        </Link>
                     </CardContent>
                 </Card>
 

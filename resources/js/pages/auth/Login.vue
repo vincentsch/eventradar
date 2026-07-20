@@ -101,4 +101,11 @@ defineProps<{
             </Button>
         </div>
     </Form>
+
+    <p class="text-center text-sm text-muted-foreground">
+        New to EventRadar?
+        <TextLink href="/register" class="font-medium"
+            >Create an account</TextLink
+        >
+    </p>
 </template>

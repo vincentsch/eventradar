@@ -142,6 +142,7 @@ class EventSeeder extends Seeder
                     'email' => $email,
                     'email_verified_at' => $timestamp,
                     'password' => $password,
+                    'is_admin' => $email === 'reviewer@example.test',
                     'remember_token' => null,
                     'created_at' => $timestamp,
                     'updated_at' => $timestamp,
@@ -150,6 +151,10 @@ class EventSeeder extends Seeder
 
             DB::table('users')->insert($rows);
         }
+
+        DB::table('users')
+            ->where('email', 'reviewer@example.test')
+            ->update(['is_admin' => true]);
 
         $ownerEmails = array_slice($emails, 1);
         $ownerIds = [];

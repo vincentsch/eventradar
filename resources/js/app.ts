@@ -1,5 +1,6 @@
 import { createInertiaApp } from '@inertiajs/vue3';
 import { initializeTheme } from '@/composables/useAppearance';
+import AccountLayout from '@/layouts/AccountLayout.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import PublicLayout from '@/layouts/PublicLayout.vue';
@@ -12,6 +13,8 @@ createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
+            case name.startsWith('Account/') || name.startsWith('Attendance/'):
+                return AccountLayout;
             case name.startsWith('Public/') || name === 'Events/Show':
                 return PublicLayout;
             case name.startsWith('auth/'):

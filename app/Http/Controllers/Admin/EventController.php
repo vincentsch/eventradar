@@ -6,6 +6,7 @@ use App\Domain\Events\EventStatus;
 use App\Domain\Events\EventType;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\EventAttendance;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -113,6 +114,14 @@ class EventController extends Controller
             ->whereKey($event)
             ->firstOrFail();
 
+        $attendanceCounts = EventAttendance::query()
+            ->selectRaw('intent, COUNT(*) AS aggregate')
+            ->where('event_id', $record->id)
+            ->whereNull('cancelled_at')
+            ->groupBy('intent')
+            ->pluck('aggregate', 'intent')
+            ->map(fn (int|string $count): int => (int) $count);
+
         return Inertia::render('Admin/Events/Show', [
             'event' => [
                 ...$record->only([
@@ -149,6 +158,11 @@ class EventController extends Controller
                     'height',
                     'alt',
                 ]))->values()->all() ?? [],
+            ],
+            'attendance' => [
+                'going' => $attendanceCounts->get('going', 0),
+                'interested' => $attendanceCounts->get('interested', 0),
+                'total' => $attendanceCounts->sum(),
             ],
         ]);
     }

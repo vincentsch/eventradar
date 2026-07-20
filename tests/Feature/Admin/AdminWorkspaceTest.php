@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Event;
+use App\Models\EventAttendance;
 use App\Models\User;
 use App\Services\Events\EventImageCatalogueImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -9,7 +10,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     app(EventImageCatalogueImporter::class)->replace();
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->admin()->create());
 });
 
 it('renders database-backed dashboard aggregates', function () {
@@ -180,4 +181,26 @@ it('inspects hidden lifecycle states without selecting payload or owner data', f
         )
         ->assertDontSee('private-owner@example.test')
         ->assertDontSee('raw source');
+});
+
+it('shows a private paginated attendee list to administrators', function () {
+    $event = Event::factory()->published()->create();
+    $attendee = User::factory()->create([
+        'name' => 'List Guest',
+        'email' => 'list-guest@example.test',
+    ]);
+    EventAttendance::query()->create([
+        'event_id' => $event->id,
+        'user_id' => $attendee->id,
+        'intent' => 'going',
+    ]);
+
+    $this->get("/admin/events/{$event->id}/attendees")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Admin/Events/Attendees')
+            ->has('attendees.data', 1)
+            ->where('attendees.data.0.name', 'List Guest')
+            ->where('attendees.data.0.email', 'list-guest@example.test')
+            ->where('attendees.data.0.intent', 'going'));
 });

@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { CalendarDays, CircleCheckBig, CircleX, Database } from '@lucide/vue';
+import {
+    CalendarDays,
+    CircleCheckBig,
+    CircleX,
+    Database,
+    MailWarning,
+    Users,
+} from '@lucide/vue';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const props = defineProps<{
@@ -8,6 +15,8 @@ const props = defineProps<{
         total: number;
         statuses: Record<string, number>;
         types: Record<string, number>;
+        active_attendances: number;
+        failed_deliveries: number;
     };
 }>();
 
@@ -37,6 +46,16 @@ const cards = [
         value: props.summary.statuses.cancelled ?? 0,
         icon: CircleX,
     },
+    {
+        label: 'Active attendance',
+        value: props.summary.active_attendances,
+        icon: Users,
+    },
+    {
+        label: 'Failed emails',
+        value: props.summary.failed_deliveries,
+        icon: MailWarning,
+    },
 ];
 </script>
 
@@ -65,7 +84,9 @@ const cards = [
             </Link>
         </header>
 
-        <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section
+            class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7"
+        >
             <Card v-for="card in cards" :key="card.label" class="gap-3">
                 <CardHeader
                     class="flex-row items-center justify-between space-y-0 pb-0"

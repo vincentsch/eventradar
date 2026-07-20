@@ -47,7 +47,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const page = usePage();
-const auth = computed(() => page.props.auth);
+// This header is rendered only inside authenticated application layouts.
+const auth = computed(() => ({ user: page.props.auth.user! }));
 const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
 
 const activeItemStyles =

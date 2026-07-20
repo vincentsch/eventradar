@@ -40,7 +40,8 @@ it('keeps settings under admin while passkey discovery stays root anchored', fun
         ->assertJsonPath('manage', route('security.edit'));
 });
 
-it('does not expose public account registration', function () {
-    $this->get('/register')->assertNotFound();
-    $this->post('/register')->assertNotFound();
+it('exposes public account registration for attendee accounts', function () {
+    $this->get('/register')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('auth/Register'));
 });
