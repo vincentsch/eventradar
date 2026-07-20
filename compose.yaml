@@ -32,6 +32,8 @@ services:
                 condition: service_started
             meilisearch:
                 condition: service_healthy
+            mysql:
+                condition: service_healthy
             redis:
                 condition: service_healthy
         healthcheck:
@@ -98,6 +100,32 @@ services:
             retries: 6
             start_period: 5s
 
+    mysql:
+        image: 'mysql:8.4'
+        ports:
+            - '${FORWARD_DB_PORT:-13306}:3306'
+        environment:
+            MYSQL_DATABASE: '${DB_DATABASE:-event_visuals}'
+            MYSQL_PASSWORD: '${DB_PASSWORD:-password}'
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD:-password}'
+            MYSQL_TEST_DATABASE: '${DB_TEST_DATABASE:-event_visuals_testing}'
+            MYSQL_USER: '${DB_USERNAME:-sail}'
+        volumes:
+            - 'sail-mysql:/var/lib/mysql'
+            - './docker/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh:ro'
+        networks:
+            - sail
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'MYSQL_PWD="$${MYSQL_ROOT_PASSWORD}" mysqladmin ping --host=127.0.0.1 --user=root --silent',
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 12
+            start_period: 30s
+
     redis:
         image: 'redis:7-alpine'
         volumes:
@@ -117,6 +145,8 @@ networks:
 
 volumes:
     sail-meilisearch:
+        driver: local
+    sail-mysql:
         driver: local
     sail-redis:
         driver: local
