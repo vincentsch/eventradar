@@ -16,7 +16,7 @@ services:
             args:
                 WWWGROUP: '${WWWGROUP:-1000}'
                 NODE_VERSION: '${NODE_VERSION:-22}'
-        image: 'event-visuals-sail-8.5/app'
+        image: 'eventradar-sail-8.5/app'
         init: true
         extra_hosts:
             - 'host.docker.internal:host-gateway'
@@ -44,7 +44,7 @@ services:
             start_period: 10s
 
     horizon:
-        image: 'event-visuals-sail-8.5/app'
+        image: 'eventradar-sail-8.5/app'
         init: true
         command: php artisan horizon
         environment: *app-environment
@@ -60,7 +60,7 @@ services:
         stop_grace_period: 30s
 
     scheduler:
-        image: 'event-visuals-sail-8.5/app'
+        image: 'eventradar-sail-8.5/app'
         init: true
         command: php artisan schedule:work
         environment: *app-environment
@@ -87,7 +87,7 @@ services:
         environment:
             MEILI_DB_PATH: '${MEILI_DB_PATH:-/meili_data/data.ms}'
             MEILI_ENV: '${MEILI_ENV:-development}'
-            MEILI_MASTER_KEY: '${MEILISEARCH_KEY:-local-event-visuals-meilisearch-master-key}'
+            MEILI_MASTER_KEY: '${MEILISEARCH_KEY:-local-eventradar-meilisearch-master-key}'
             MEILI_NO_ANALYTICS: '${MEILI_NO_ANALYTICS:-true}'
         volumes:
             - 'sail-meilisearch:/meili_data'
@@ -113,7 +113,7 @@ services:
         volumes:
             - 'sail-mysql:/var/lib/mysql'
             - './docker/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh:ro'
-            - './docker/mysql/event-visuals.cnf:/etc/mysql/conf.d/90-event-visuals.cnf:ro'
+            - './docker/mysql/eventradar.cnf:/etc/mysql/conf.d/90-eventradar.cnf:ro'
         networks:
             - sail
         healthcheck:

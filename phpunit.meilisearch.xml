@@ -21,7 +21,7 @@
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="DB_URL" value=""/>
         <env name="MEILISEARCH_HOST" value="http://meilisearch:7700"/>
-        <env name="MEILISEARCH_KEY" value="local-event-visuals-meilisearch-master-key"/>
+        <env name="MEILISEARCH_KEY" value="local-eventradar-meilisearch-master-key"/>
         <env name="MEILISEARCH_TIMEOUT" value="5"/>
         <env name="MEILISEARCH_TASK_POLL_INTERVAL_MS" value="50"/>
         <env name="MEILISEARCH_TASK_QUERY_CHUNK_SIZE" value="100"/>

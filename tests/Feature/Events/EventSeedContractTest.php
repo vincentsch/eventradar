@@ -9,7 +9,7 @@ use Database\Seeders\EventSeeder;
 it('uses the ten thousand row development profile by default', function () {
     config()->set('events.seed_profile', 'dev');
     config()->set('events.seed_profiles.dev', 10_000);
-    config()->set('events.seed', 'event-visuals-v1');
+    config()->set('events.seed', 'eventradar-v1');
     config()->set('events.seed_reference_at', '2026-07-20T12:00:00Z');
 
     $options = EventSeedOptions::fromConfig();
