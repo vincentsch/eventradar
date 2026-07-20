@@ -1,11 +1,14 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/vue-starter-kit",
+    "name": "vincentschmalbach/eventradar",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "A global event discovery and attendance platform built with Laravel and Inertia.",
     "keywords": [
+        "events",
+        "inertia",
         "laravel",
-        "framework"
+        "meilisearch",
+        "vue"
     ],
     "license": "MIT",
     "require": {
@@ -98,7 +101,6 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
         ],
         "pre-package-uninstall": [

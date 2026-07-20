@@ -1,5 +1,6 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "eventradar",
     "private": true,
     "type": "module",
     "scripts": {
@@ -8,8 +9,8 @@
         "dev": "vite",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
-        "lint": "eslint . --fix",
-        "lint:check": "eslint .",
+        "lint": "eslint resources/js tests/e2e playwright.config.ts --fix",
+        "lint:check": "eslint resources/js tests/e2e playwright.config.ts",
         "test:e2e": "playwright test",
         "test:e2e:desktop": "playwright test --project=chromium-desktop",
         "test:e2e:mobile": "playwright test --project=chromium-mobile",

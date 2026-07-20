@@ -31,7 +31,6 @@ test('the reviewer browses, paginates, filters, and inspects database events', a
     await expect(page.getByText('Page 2 of', { exact: false })).toBeVisible();
 
     await page.getByLabel('Status').selectOption('cancelled');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/status=cancelled/);
     await expect(
         page.locator('tbody').getByText('cancelled').first(),

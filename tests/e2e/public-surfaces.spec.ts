@@ -100,7 +100,7 @@ test('discovery filters, pagination, details, and map work with live data', asyn
     await cards.first().getByRole('button').click();
     await expect(
         page.getByRole('dialog').getByRole('link', {
-            name: 'View full event details',
+            name: 'Full event details',
         }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Close event details' }).click();
@@ -132,15 +132,44 @@ test('discovery filters, pagination, details, and map work with live data', asyn
     await expect(cards).toHaveCount(36);
 
     await date.selectOption('custom');
-    await page
-        .locator('[data-value="2026-07-27"]:not([data-outside-view])')
+    const rangePicker = page.getByRole('group', {
+        name: 'Custom date range',
+    });
+    const currentDates = await rangePicker
+        .locator('[data-value]:not([data-outside-view])')
+        .evaluateAll((dates) =>
+            dates.map((date) => date.getAttribute('data-value') ?? ''),
+        );
+    const outsideDates = await rangePicker
+        .locator('[data-value][data-outside-view]')
+        .evaluateAll((dates) =>
+            dates.map((date) => date.getAttribute('data-value') ?? ''),
+        );
+    const duplicatedDate = currentDates.find((value) =>
+        outsideDates.includes(value),
+    );
+
+    if (!duplicatedDate) {
+        throw new Error('The adjacent month should repeat at least one date.');
+    }
+
+    const rangeEnd = currentDates.findLast(
+        (value) => value > duplicatedDate,
+    );
+
+    if (!rangeEnd) {
+        throw new Error('The adjacent month should contain a later date.');
+    }
+
+    await rangePicker
+        .locator(`[data-value="${duplicatedDate}"]:not([data-outside-view])`)
         .click();
-    await page
-        .locator('[data-value="2026-08-08"]:not([data-outside-view])')
+    await rangePicker
+        .locator(`[data-value="${rangeEnd}"]:not([data-outside-view])`)
         .click();
     await page.getByRole('button', { name: 'Edit dates' }).click();
     const duplicateRangeStart = page.locator(
-        '[data-value="2026-07-27"][data-outside-view]',
+        `[data-value="${duplicatedDate}"][data-outside-view]`,
     );
     await expect(duplicateRangeStart).toHaveCSS('pointer-events', 'none');
     await expect(duplicateRangeStart).toHaveCSS(
