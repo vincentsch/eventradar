@@ -9,13 +9,35 @@ it('keeps the public assessment entry and health routes available', function () 
     $this->get('/up')->assertOk();
 });
 
-it('renders each named assessment surface through its intended Inertia component', function (string $routeName, string $component) {
+it('renders each named public visual through its intended Inertia component', function (string $routeName, string $component) {
     $this->get(route($routeName))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component($component));
 })->with([
-    'event explorer' => ['events.index', 'Events/Index'],
     'event visual one' => ['events.visual1', 'Public/Discover'],
     'event visual two' => ['events.visual2', 'Public/NearAndSoon'],
-    'dashboard' => ['dashboard', 'Dashboard'],
 ]);
+
+it('redirects guests from the inherited workspace entries to login', function (string $url) {
+    $this->get($url)->assertRedirect(route('login'));
+})->with(['/admin', '/admin/events']);
+
+it('keeps legacy workspace entries as redirects into admin', function () {
+    $this->get('/dashboard')->assertRedirect('/admin');
+    $this->get('/events')->assertRedirect('/admin/events');
+});
+
+it('keeps settings under admin while passkey discovery stays root anchored', function () {
+    expect(route('profile.edit', absolute: false))->toBe('/admin/settings/profile')
+        ->and(route('appearance.edit', absolute: false))->toBe('/admin/settings/appearance');
+
+    $this->get('/.well-known/passkey-endpoints')
+        ->assertOk()
+        ->assertJsonPath('enroll', route('security.edit'))
+        ->assertJsonPath('manage', route('security.edit'));
+});
+
+it('does not expose public account registration', function () {
+    $this->get('/register')->assertNotFound();
+    $this->post('/register')->assertNotFound();
+});

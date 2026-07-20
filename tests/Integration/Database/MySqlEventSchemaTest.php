@@ -42,6 +42,10 @@ it('creates the normalized MySQL columns, constraints, and access indexes', func
         'events_location_index',
         'events_starts_at_index',
         'events_coordinates_index',
+        'events_admin_type_index',
+        'events_admin_country_index',
+        'events_admin_local_date_index',
+        'events_admin_title_index',
     );
 
     $sqlMode = (string) DB::selectOne('SELECT @@SESSION.sql_mode AS sql_mode')->sql_mode;

@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import {
-    BarChart3,
-    BookOpen,
-    FolderGit2,
-    LayoutGrid,
-    ListOrdered,
-    Map,
-} from '@lucide/vue';
+import { ExternalLink, LayoutDashboard, ListOrdered } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -28,35 +21,20 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
-        icon: LayoutGrid,
+        icon: LayoutDashboard,
     },
     {
         title: 'Events',
-        href: '/events',
+        href: '/admin/events',
         icon: ListOrdered,
-    },
-    {
-        title: 'Events Visual 1',
-        href: '/events-visual-1',
-        icon: BarChart3,
-    },
-    {
-        title: 'Events Visual 2',
-        href: '/events-visual-2',
-        icon: Map,
     },
 ];
 
 const footerNavItems: NavItem[] = [
     {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
+        title: 'View public site',
+        href: '/',
+        icon: ExternalLink,
     },
 ];
 </script>

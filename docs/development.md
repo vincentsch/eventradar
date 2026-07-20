@@ -21,6 +21,10 @@ php artisan key:generate
 
 The application is available at `APP_URL`. Vite hot module replacement uses `VITE_PORT`.
 
+After seeding, the authenticated operational workspace is available at `/admin` with the local
+reviewer account `reviewer@example.test` and password `password`. Public self-registration is
+disabled; this account is deterministic development data, not a production credential.
+
 The compose project exposes MySQL on `FORWARD_DB_PORT` for optional host inspection. Application
 code connects over the compose network with `DB_HOST=mysql` and `DB_PORT=3306`. The MySQL startup
 hook creates both `DB_DATABASE` and the isolated `DB_TEST_DATABASE`.

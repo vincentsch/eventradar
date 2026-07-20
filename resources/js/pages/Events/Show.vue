@@ -62,7 +62,7 @@ const location = [
     <Head :title="event.title" />
 
     <article class="mx-auto flex max-w-5xl flex-col gap-8 p-4 sm:p-8">
-        <Link href="/events" class="text-sm text-primary hover:underline">
+        <Link href="/" class="text-sm text-primary hover:underline">
             ← Back to events
         </Link>
 

@@ -2,10 +2,8 @@ import { expect, test } from '@playwright/test';
 
 const publicSurfaces = [
     { path: '/', label: 'home discovery' },
-    { path: '/events', label: 'events' },
     { path: '/events-visual-1', label: 'visual one' },
     { path: '/events-visual-2', label: 'visual two' },
-    { path: '/dashboard', label: 'dashboard' },
 ];
 
 test('public assessment surfaces respond, hydrate, and fit the viewport', async ({
