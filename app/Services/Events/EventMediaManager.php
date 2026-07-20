@@ -18,7 +18,7 @@ final class EventMediaManager
     private const MAX_PIXELS = 40_000_000;
 
     /** @param list<UploadedFile> $files */
-    public function replace(Event $event, array $files): void
+    public function prepare(Event $event, array $files): PreparedEventMedia
     {
         if (count($files) < 2 || count($files) > 8) {
             throw new RuntimeException('An event gallery must contain between two and eight images.');
@@ -37,6 +37,11 @@ final class EventMediaManager
             throw $exception;
         }
 
+        return new PreparedEventMedia($rows, $newPaths);
+    }
+
+    public function replace(Event $event, PreparedEventMedia $prepared): void
+    {
         $oldPaths = $event->media()
             ->get(['path', 'card_path'])
             ->flatMap(fn ($media): array => [$media->path, $media->card_path])
@@ -44,14 +49,19 @@ final class EventMediaManager
 
         try {
             $event->media()->delete();
-            $event->media()->createMany($rows);
+            $event->media()->createMany($prepared->rows);
         } catch (Throwable $exception) {
-            Storage::disk(self::DISK)->delete($newPaths);
+            $this->discard($prepared);
 
             throw $exception;
         }
 
         DB::afterCommit(fn () => Storage::disk(self::DISK)->delete($oldPaths));
+    }
+
+    public function discard(PreparedEventMedia $prepared): void
+    {
+        Storage::disk(self::DISK)->delete($prepared->paths);
     }
 
     /**
@@ -96,13 +106,14 @@ final class EventMediaManager
         $largeBlob = $large->getImageBlob();
         $cardBlob = $card->getImageBlob();
 
-        if (! Storage::disk(self::DISK)->put($path, $largeBlob)
-            || ! Storage::disk(self::DISK)->put($cardPath, $cardBlob)
-        ) {
+        if (! Storage::disk(self::DISK)->put($path, $largeBlob)) {
             throw new RuntimeException('The optimized image could not be saved.');
         }
-
         $newPaths[] = $path;
+
+        if (! Storage::disk(self::DISK)->put($cardPath, $cardBlob)) {
+            throw new RuntimeException('The optimized image could not be saved.');
+        }
         $newPaths[] = $cardPath;
 
         $row = [

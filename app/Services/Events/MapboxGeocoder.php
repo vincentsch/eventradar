@@ -19,17 +19,6 @@ final class MapboxGeocoder
         ]);
     }
 
-    /** @return array<string, float|string|null>|null */
-    public function reverse(float $latitude, float $longitude): ?array
-    {
-        return $this->request('reverse', [
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-            'types' => 'address,street,place',
-            'limit' => 1,
-        ])[0] ?? null;
-    }
-
     /**
      * @param  array<string, float|int|string>  $parameters
      * @return list<array<string, float|string|null>>

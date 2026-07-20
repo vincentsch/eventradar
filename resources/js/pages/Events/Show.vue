@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Form, Head, Link, useHttp, usePage } from '@inertiajs/vue3';
+import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import { BellRing, Check, Users } from '@lucide/vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import { Toaster } from '@/components/ui/sonner';
 import type { Auth } from '@/types';
 
@@ -73,14 +73,9 @@ const formatDateTime = (value: string) =>
         timeZoneName: 'short',
     }).format(new Date(value));
 
-const resolvedAddress = ref(props.event.formatted_address);
-const addressLookup = useHttp<
-    Record<string, never>,
-    { address: string | null }
->({});
 const location = computed(() =>
-    resolvedAddress.value
-        ? `${props.event.venue_name}, ${resolvedAddress.value}`
+    props.event.formatted_address
+        ? `${props.event.venue_name}, ${props.event.formatted_address}`
         : [
               props.event.venue_name,
               props.event.locality,
@@ -90,23 +85,6 @@ const location = computed(() =>
               .filter(Boolean)
               .join(', '),
 );
-
-onMounted(async () => {
-    if (
-        resolvedAddress.value ||
-        props.event.latitude === null ||
-        props.event.longitude === null
-    ) {
-        return;
-    }
-
-    try {
-        await addressLookup.get(`/events/${props.event.id}/address`);
-        resolvedAddress.value = addressLookup.response?.address ?? null;
-    } catch {
-        // The city-level fallback remains useful when geocoding is unavailable.
-    }
-});
 </script>
 
 <template>

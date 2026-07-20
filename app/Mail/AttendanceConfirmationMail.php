@@ -32,18 +32,20 @@ class AttendanceConfirmationMail extends Mailable
             'date' => $startsAt->format('l, F j, Y'),
             'time' => $startsAt->format('H:i T'),
             'timezone' => $event->timezone,
-            'location' => implode(', ', array_filter([
-                $event->venue_name,
-                $event->locality,
-                $event->region,
-                $event->country,
-            ])),
+            'location' => $event->formatted_address
+                ? implode(', ', [$event->venue_name, $event->formatted_address])
+                : implode(', ', array_filter([
+                    $event->venue_name,
+                    $event->locality,
+                    $event->region,
+                    $event->country,
+                ])),
             'event_url' => route('events.show', $event),
         ];
         $this->manageUrl = route('account.events.index');
         $this->cancelUrl = URL::temporarySignedRoute(
             'attendance.cancel.confirm',
-            now()->addDays(30),
+            $event->ends_at,
             ['attendance' => $attendance->id],
         );
     }

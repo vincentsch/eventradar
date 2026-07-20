@@ -13,8 +13,9 @@ use Inertia\Response;
 
 class EventAttendeeController extends Controller
 {
-    public function __invoke(Request $request, Event $event): Response
+    public function __invoke(Request $request, string $event): Response
     {
+        $record = Event::query()->findOrFail($event, ['id', 'title']);
         $intent = $request->string('intent')->trim()->toString();
         $state = $request->string('state')->trim()->toString();
         $query = $request->string('q')->trim()->toString();
@@ -34,7 +35,7 @@ class EventAttendeeController extends Controller
                 'users.email',
             ])
             ->join('users', 'users.id', '=', 'event_attendances.user_id')
-            ->where('event_attendances.event_id', $event->id)
+            ->where('event_attendances.event_id', $record->id)
             ->when($intent !== null, fn (Builder $builder) => $builder->where('event_attendances.intent', $intent))
             ->when($state === 'active', fn (Builder $builder) => $builder->whereNull('event_attendances.cancelled_at'))
             ->when($state === 'cancelled', fn (Builder $builder) => $builder->whereNotNull('event_attendances.cancelled_at'))
@@ -50,7 +51,7 @@ class EventAttendeeController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Events/Attendees', [
-            'event' => $event->only(['id', 'title']),
+            'event' => $record->only(['id', 'title']),
             'attendees' => $attendees,
             'filters' => [
                 'q' => $query,

@@ -34,7 +34,7 @@ class SendAttendanceReminder implements ShouldQueue
         $delivery = AttendanceDelivery::query()
             ->with([
                 'attendance.user:id,name,email',
-                'attendance.event:id,title,status,starts_at,ends_at,timezone,venue_name,locality,region,country',
+                'attendance.event:id,title,status,starts_at,ends_at,timezone,venue_name,formatted_address,locality,region,country',
             ])
             ->whereKey($this->deliveryId)
             ->where('claim_token', $this->claimToken)

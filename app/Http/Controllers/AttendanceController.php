@@ -12,17 +12,18 @@ use Inertia\Inertia;
 
 class AttendanceController extends Controller
 {
-    public function begin(Event $event): RedirectResponse
+    public function begin(string $event): RedirectResponse
     {
-        return redirect()->route('events.show', $event);
+        return redirect()->route('events.show', ['event' => $event]);
     }
 
     public function store(
         StoreAttendanceRequest $request,
-        Event $event,
+        string $event,
         AttendanceManager $manager,
     ): RedirectResponse {
-        $attendance = $manager->register($request->user(), $event, $request->intent());
+        $record = Event::query()->findOrFail($event, ['id', 'status', 'starts_at', 'ends_at']);
+        $attendance = $manager->register($request->user(), $record, $request->intent());
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -34,10 +35,10 @@ class AttendanceController extends Controller
         return back();
     }
 
-    public function destroy(Request $request, Event $event, AttendanceManager $manager): RedirectResponse
+    public function destroy(Request $request, string $event, AttendanceManager $manager): RedirectResponse
     {
         $attendance = EventAttendance::query()
-            ->where('event_id', $event->id)
+            ->where('event_id', $event)
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 

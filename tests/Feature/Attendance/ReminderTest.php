@@ -131,3 +131,28 @@ it('rebuilds pending reminder horizons when an event is rescheduled', function (
         ->and($newOneDay->status)->toBe(DeliveryStatus::Pending)
         ->and($newOneDay->due_at->equalTo($attendance->event->starts_at->subDay()))->toBeTrue();
 });
+
+it('never recreates a sent confirmation after repeated rescheduling', function () {
+    $attendance = attendanceForReminder();
+    AttendanceDelivery::query()
+        ->where('kind', 'confirmation')
+        ->update(['status' => DeliveryStatus::Sent->value, 'sent_at' => now('UTC')]);
+
+    foreach ([2, 4] as $days) {
+        $attendance->event->forceFill([
+            'starts_at' => $attendance->event->starts_at->addDays($days),
+            'ends_at' => $attendance->event->ends_at->addDays($days),
+            'starts_on_local' => $attendance->event->starts_on_local->addDays($days),
+        ])->save();
+        app(AttendanceManager::class)->rescheduleForEvent($attendance->event);
+        $attendance->refresh();
+    }
+
+    expect($attendance->revision)->toBe(3)
+        ->and(AttendanceDelivery::query()->where('kind', 'confirmation')->count())->toBe(1)
+        ->and(AttendanceDelivery::query()
+            ->where('attendance_revision', 3)
+            ->whereIn('kind', ['three_days', 'one_day'])
+            ->where('status', DeliveryStatus::Pending->value)
+            ->count())->toBe(2);
+});

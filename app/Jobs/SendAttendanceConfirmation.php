@@ -76,7 +76,7 @@ class SendAttendanceConfirmation implements ShouldBeUnique, ShouldQueue
 
         try {
             $attendance = EventAttendance::query()
-                ->with(['user:id,name,email', 'event:id,title,starts_at,ends_at,timezone,venue_name,locality,region,country'])
+                ->with(['user:id,name,email', 'event:id,title,starts_at,ends_at,timezone,venue_name,formatted_address,locality,region,country'])
                 ->find($this->attendanceId);
 
             if ($attendance === null

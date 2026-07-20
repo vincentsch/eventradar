@@ -24,6 +24,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class EventController extends Controller
 {
@@ -105,19 +106,26 @@ class EventController extends Controller
         EventMediaManager $media,
         PublicEventFilterOptions $filters,
     ): RedirectResponse {
-        $event = DB::transaction(function () use ($request, $dates, $media, $filters): Event {
-            $attributes = $this->attributes($request, $dates);
-            $event = new Event($attributes);
-            $event->user_id = $request->user()->id;
-            $event->image_set_key = $this->defaultImageSet($attributes['type']);
-            $event->setAttribute('payload', json_encode(['source' => 'admin'], JSON_THROW_ON_ERROR));
-            $event->save();
-            $media->replace($event, $request->file('images', []));
-            DB::afterCommit(fn () => $filters->forget());
-            ReconcileEventSearchIndex::dispatch($event->id)->onQueue('search')->afterCommit();
+        $attributes = $this->attributes($request, $dates);
+        $event = new Event($attributes);
+        $event->id = $event->newUniqueId();
+        $event->user_id = $request->user()->id;
+        $event->image_set_key = $this->defaultImageSet($attributes['type']);
+        $event->setAttribute('payload', json_encode(['source' => 'admin'], JSON_THROW_ON_ERROR));
+        $prepared = $media->prepare($event, $request->file('images', []));
 
-            return $event;
-        }, 3);
+        try {
+            DB::transaction(function () use ($event, $media, $prepared, $filters): void {
+                $event->save();
+                $media->replace($event, $prepared);
+                DB::afterCommit(fn () => $filters->forget());
+                ReconcileEventSearchIndex::dispatch($event->id)->onQueue('search')->afterCommit();
+            });
+        } catch (Throwable $exception) {
+            $media->discard($prepared);
+
+            throw $exception;
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Event created.']);
 
@@ -161,26 +169,45 @@ class EventController extends Controller
         PublicEventFilterOptions $filters,
     ): RedirectResponse {
         $record = Event::query()->select(self::EDIT_COLUMNS)->findOrFail($event);
+        $originalStart = $record->starts_at->getTimestamp();
+        $originalStatus = $record->status;
+        $record->fill($this->attributes($request, $dates));
+        $scheduleChanged = $record->starts_at->getTimestamp() !== $originalStart;
+        $visibilityChanged = $record->status !== $originalStatus;
+        $prepared = $request->hasFile('images')
+            ? $media->prepare($record, $request->file('images', []))
+            : null;
 
-        DB::transaction(function () use ($request, $record, $dates, $media, $attendance, $filters): void {
-            $originalStart = $record->starts_at->getTimestamp();
-            $originalStatus = $record->status;
-            $record->fill($this->attributes($request, $dates));
-            $scheduleChanged = $record->starts_at->getTimestamp() !== $originalStart;
-            $visibilityChanged = $record->status !== $originalStatus;
-            $record->save();
+        try {
+            DB::transaction(function () use (
+                $record,
+                $media,
+                $prepared,
+                $scheduleChanged,
+                $visibilityChanged,
+                $attendance,
+                $filters,
+            ): void {
+                $record->save();
 
-            if ($request->hasFile('images')) {
-                $media->replace($record, $request->file('images', []));
+                if ($prepared !== null) {
+                    $media->replace($record, $prepared);
+                }
+
+                if ($scheduleChanged || $visibilityChanged) {
+                    $attendance->rescheduleForEvent($record);
+                }
+
+                DB::afterCommit(fn () => $filters->forget());
+                ReconcileEventSearchIndex::dispatch($record->id)->onQueue('search')->afterCommit();
+            });
+        } catch (Throwable $exception) {
+            if ($prepared !== null) {
+                $media->discard($prepared);
             }
 
-            if ($scheduleChanged || $visibilityChanged) {
-                $attendance->rescheduleForEvent($record);
-            }
-
-            DB::afterCommit(fn () => $filters->forget());
-            ReconcileEventSearchIndex::dispatch($record->id)->onQueue('search')->afterCommit();
-        }, 3);
+            throw $exception;
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Event updated.']);
 

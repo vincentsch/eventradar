@@ -109,7 +109,6 @@ class AttendanceManager
             foreach ($attendances as $attendance) {
                 $confirmationWasSent = AttendanceDelivery::query()
                     ->where('attendance_id', $attendance->id)
-                    ->where('attendance_revision', $attendance->revision)
                     ->where('kind', DeliveryKind::Confirmation->value)
                     ->where('status', DeliveryStatus::Sent->value)
                     ->exists();

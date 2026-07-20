@@ -13,7 +13,7 @@ class SignedAttendanceController extends Controller
 {
     public function confirm(EventAttendance $attendance): Response
     {
-        $attendance->load(['event:id,title,starts_at,timezone,venue_name,locality,country']);
+        $attendance->load(['event:id,title,starts_at,timezone,venue_name,formatted_address,locality,country']);
 
         return Inertia::render('Attendance/Cancel', [
             'attendance' => [
@@ -22,11 +22,13 @@ class SignedAttendanceController extends Controller
                     'title' => $attendance->event->title,
                     'starts_at' => $attendance->event->starts_at->toISOString(),
                     'timezone' => $attendance->event->timezone,
-                    'location' => implode(', ', array_filter([
-                        $attendance->event->venue_name,
-                        $attendance->event->locality,
-                        $attendance->event->country,
-                    ])),
+                    'location' => $attendance->event->formatted_address
+                        ? implode(', ', [$attendance->event->venue_name, $attendance->event->formatted_address])
+                        : implode(', ', array_filter([
+                            $attendance->event->venue_name,
+                            $attendance->event->locality,
+                            $attendance->event->country,
+                        ])),
                 ],
             ],
         ]);

@@ -8,7 +8,6 @@ use App\Http\Controllers\Admin\EventAttendeeController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DiscoverController;
-use App\Http\Controllers\EventAddressController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\SignedAttendanceController;
 use Illuminate\Support\Facades\Route;
@@ -20,9 +19,6 @@ Route::inertia('events-visual-2', 'Public/NearAndSoon')->name('events.visual2');
 
 Route::redirect('events', '/admin/events')->name('events.index');
 Route::get('events/{event}', [EventController::class, 'show'])->name('events.show');
-Route::get('events/{event}/address', EventAddressController::class)
-    ->middleware('throttle:10,1')
-    ->name('events.address');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('events/{event}/attendance', [AttendanceController::class, 'begin'])
