@@ -212,10 +212,37 @@ test('discovery filters, pagination, details, and map work with live data', asyn
     await expect(
         page.getByRole('button', { name: 'Search this area' }),
     ).toBeVisible({ timeout: 15_000 });
+    const mapCanvas = page.locator('[data-map-canvas]');
+    await expect
+        .poll(async () => Number(await mapCanvas.getAttribute('data-map-zoom')))
+        .toBeGreaterThanOrEqual(10);
+    expect(Number(await mapCanvas.getAttribute('data-map-zoom'))).toBeLessThan(
+        11,
+    );
     await page.getByRole('button', { name: /Filters/ }).click();
     await expect(
         page.getByRole('button', { name: 'Remove Concert' }),
     ).toBeVisible();
+
+    const firstAgendaEvent = page.locator('[id^="agenda-event-"]').first();
+    await firstAgendaEvent.getByRole('button').first().click();
+    await expect
+        .poll(async () => Number(await mapCanvas.getAttribute('data-map-zoom')))
+        .toBeGreaterThanOrEqual(13);
+
+    await upcomingOnly.uncheck();
+    await expect(page).toHaveURL(/ongoing=1/);
+    expect(new URL(page.url()).searchParams.get('north')).toBeNull();
+    expect(new URL(page.url()).searchParams.get('south')).toBeNull();
+    expect(new URL(page.url()).searchParams.get('east')).toBeNull();
+    expect(new URL(page.url()).searchParams.get('west')).toBeNull();
+    await expect
+        .poll(async () => Number(await mapCanvas.getAttribute('data-map-zoom')))
+        .toBeLessThan(11);
+    await upcomingOnly.check();
+    await expect
+        .poll(() => new URL(page.url()).searchParams.get('ongoing'))
+        .toBeNull();
 
     const agendaDays = await page
         .locator('[data-agenda-day]')
@@ -234,9 +261,27 @@ test('discovery filters, pagination, details, and map work with live data', asyn
         expect(day.times).toEqual([...day.times].sort());
     }
 
+    await firstAgendaEvent.getByRole('button').first().click();
+    await expect
+        .poll(async () => Number(await mapCanvas.getAttribute('data-map-zoom')))
+        .toBeGreaterThanOrEqual(13);
+    const cameraBeforeAreaSearch = {
+        center: await mapCanvas.getAttribute('data-map-center'),
+        zoom: await mapCanvas.getAttribute('data-map-zoom'),
+    };
+
     await page.getByRole('button', { name: 'Search this area' }).click();
     await expect(page).toHaveURL(/north=/);
     await expect(page).toHaveURL(/south=/);
     await expect(page).toHaveURL(/east=/);
     await expect(page).toHaveURL(/west=/);
+    await expect(
+        page.getByRole('button', { name: 'Search this area' }),
+    ).toBeEnabled();
+    expect(await mapCanvas.getAttribute('data-map-center')).toBe(
+        cameraBeforeAreaSearch.center,
+    );
+    expect(await mapCanvas.getAttribute('data-map-zoom')).toBe(
+        cameraBeforeAreaSearch.zoom,
+    );
 });

@@ -59,10 +59,14 @@ const props = defineProps<{
 }>();
 
 const selectedId = ref(props.events[0]?.id ?? '');
+const focusEventId = ref('');
+const focusZoom = ref(13.5);
+const focusRevision = ref(0);
 const filtersOpen = ref(false);
 const loading = ref(false);
 let latestRequest = 0;
 const currentBounds = ref<MapBounds | null>(boundsFromQuery(props.query));
+const searchedBounds = ref<MapBounds | null>(boundsFromQuery(props.query));
 const initialBounds = boundsFromQuery(props.query);
 const {
     searchTerm,
@@ -91,7 +95,14 @@ function openDetail(id: string) {
 }
 
 function selectEvent(id: string) {
-    selectedId.value = selectedId.value === id ? '' : id;
+    selectedId.value = id;
+    focusMapOnEvent(id, 13.5);
+}
+
+function focusMapOnEvent(id: string, zoom: number) {
+    focusEventId.value = id;
+    focusZoom.value = zoom;
+    focusRevision.value += 1;
 }
 
 function selectFromMap(id: string) {
@@ -174,8 +185,15 @@ watch(
     },
 );
 
+watch(
+    () => props.query,
+    (query) => {
+        searchedBounds.value = boundsFromQuery(query);
+    },
+);
+
 function applyFilters() {
-    requestEvents(currentBounds.value, parameters());
+    requestEvents(searchedBounds.value, parameters(), 'focus-results');
 }
 
 const { applyNow, cancelPendingSearch, resetWithoutApplying } =
@@ -192,12 +210,15 @@ const { applyNow, cancelPendingSearch, resetWithoutApplying } =
 
 function clearFilters() {
     resetWithoutApplying(reset);
-    requestEvents(currentBounds.value, {});
+    requestEvents(searchedBounds.value, {}, 'focus-results');
 }
+
+type RequestCameraBehavior = 'focus-results' | 'preserve';
 
 function requestEvents(
     bounds: MapBounds | null,
     filterParameters: PublicEventParameters = parameters(),
+    cameraBehavior: RequestCameraBehavior = 'focus-results',
 ) {
     cancelPendingSearch();
     const request = ++latestRequest;
@@ -212,6 +233,26 @@ function requestEvents(
             onStart: () => {
                 if (request === latestRequest) {
                     loading.value = true;
+                }
+            },
+            onSuccess: async () => {
+                await nextTick();
+
+                if (
+                    request !== latestRequest ||
+                    cameraBehavior !== 'focus-results'
+                ) {
+                    return;
+                }
+
+                const firstLocatedEvent = props.events.find(
+                    (event) =>
+                        event.latitude !== null && event.longitude !== null,
+                );
+
+                if (firstLocatedEvent) {
+                    selectedId.value = firstLocatedEvent.id;
+                    focusMapOnEvent(firstLocatedEvent.id, 10.5);
                 }
             },
             onFinish: () => {
@@ -504,13 +545,16 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
             <EventMap
                 :events="events"
                 :selected-id="selectedId"
+                :focus-event-id="focusEventId"
+                :focus-zoom="focusZoom"
+                :focus-revision="focusRevision"
                 :initial-bounds="initialBounds"
                 :loading="loading"
                 :unavailable="discovery.status === 'unavailable'"
                 @select="selectFromMap"
                 @view="openDetail"
                 @bounds-change="currentBounds = $event"
-                @search="requestEvents($event)"
+                @search="requestEvents($event, parameters(), 'preserve')"
             />
         </div>
 

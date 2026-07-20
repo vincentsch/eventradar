@@ -29,6 +29,9 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 const props = defineProps<{
     events: PublicEvent[];
     selectedId: string;
+    focusEventId: string;
+    focusZoom: number;
+    focusRevision: number;
     initialBounds: MapBounds | null;
     loading: boolean;
     unavailable: boolean;
@@ -56,7 +59,10 @@ const map = shallowRef<MapboxMap | null>(null);
 const mapReady = ref(false);
 const setupFailed = ref(false);
 const currentBounds = ref<MapBounds | null>(null);
+const currentZoom = ref(1.4);
+const currentCenter = ref('0,20');
 const initialViewApplied = ref(false);
+const initialEventZoom = 10.5;
 type GeoJsonData = Exclude<
     GeoJSONSourceSpecification['data'],
     string | undefined
@@ -110,6 +116,11 @@ onMounted(() => {
         mapReady.value = true;
         setupFailed.value = false;
         applyInitialView(instance);
+
+        if (props.focusRevision > 0) {
+            focusEvent(props.focusEventId, props.focusZoom);
+        }
+
         updateBounds(instance);
     });
     instance.on('moveend', () => updateBounds(instance));
@@ -162,18 +173,12 @@ watch(
             ['!', ['has', 'point_count']],
             ['!=', ['get', 'id'], id || '__none__'],
         ]);
-        const event = props.events.find((candidate) => candidate.id === id);
-
-        if (!event || event.longitude === null || event.latitude === null) {
-            return;
-        }
-
-        instance.easeTo({
-            center: [event.longitude, event.latitude],
-            zoom: Math.max(instance.getZoom(), 4),
-            duration: prefersReducedMotion() ? 0 : 500,
-        });
     },
+);
+
+watch(
+    () => props.focusRevision,
+    () => focusEvent(props.focusEventId, props.focusZoom),
 );
 
 function addEventLayers(instance: MapboxMap): void {
@@ -273,16 +278,34 @@ function applyInitialView(instance: MapboxMap): void {
         return;
     }
 
-    const bounds = new mapboxgl.LngLatBounds();
+    const event =
+        locatedEvents.value.find(
+            (candidate) => candidate.id === props.selectedId,
+        ) ?? locatedEvents.value[0]!;
+    instance.jumpTo({
+        center: [event.longitude as number, event.latitude as number],
+        zoom: initialEventZoom,
+    });
+}
 
-    for (const event of locatedEvents.value) {
-        bounds.extend([event.longitude as number, event.latitude as number]);
+function focusEvent(id: string, zoom: number): void {
+    const instance = map.value;
+    const event = props.events.find((candidate) => candidate.id === id);
+
+    if (
+        !instance ||
+        !mapReady.value ||
+        !event ||
+        event.longitude === null ||
+        event.latitude === null
+    ) {
+        return;
     }
 
-    instance.fitBounds(bounds, {
-        padding: 56,
-        maxZoom: locatedEvents.value.length === 1 ? 8 : 5,
-        duration: 0,
+    instance.easeTo({
+        center: [event.longitude, event.latitude],
+        zoom,
+        duration: prefersReducedMotion() ? 0 : 550,
     });
 }
 
@@ -328,6 +351,7 @@ function updateBounds(instance: MapboxMap): void {
     }
 
     const longitudeSpan = raw.getEast() - raw.getWest();
+    const center = instance.getCenter();
     const bounds: MapBounds = {
         north: roundCoordinate(raw.getNorth()),
         south: roundCoordinate(raw.getSouth()),
@@ -341,6 +365,8 @@ function updateBounds(instance: MapboxMap): void {
                 : roundCoordinate(normalizeLongitude(raw.getEast())),
     };
     currentBounds.value = bounds;
+    currentZoom.value = instance.getZoom();
+    currentCenter.value = `${roundCoordinate(center.lng)},${roundCoordinate(center.lat)}`;
     emit('bounds-change', bounds);
 }
 
@@ -368,6 +394,8 @@ function searchCurrentArea(): void {
         <div
             v-if="accessToken !== ''"
             data-map-canvas
+            :data-map-zoom="currentZoom.toFixed(2)"
+            :data-map-center="currentCenter"
             role="region"
             aria-label="Interactive map of event locations"
             :aria-hidden="setupFailed ? 'true' : undefined"
