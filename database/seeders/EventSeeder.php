@@ -10,6 +10,7 @@ use DateTimeZone;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class EventSeeder extends Seeder
@@ -120,7 +121,8 @@ class EventSeeder extends Seeder
     private function ensureUsers(EventSeedOptions $options): array
     {
         $ownerCount = (int) config('events.seed_owner_count');
-        $emails = ['reviewer@example.test'];
+        $demoAdminEmail = config('events.seed_demo_admin') ? 'reviewer@example.test' : null;
+        $emails = $demoAdminEmail ? [$demoAdminEmail] : [];
 
         for ($number = 1; $number <= $ownerCount; $number++) {
             $emails[] = sprintf('event-owner-%03d@example.test', $number);
@@ -131,18 +133,18 @@ class EventSeeder extends Seeder
 
         if ($missingEmails !== []) {
             $timestamp = $options->referenceAt->format('Y-m-d H:i:s');
-            $password = Hash::make('password');
             $rows = [];
 
             foreach ($missingEmails as $email) {
+                $isDemoAdmin = $email === $demoAdminEmail;
                 $rows[] = [
-                    'name' => $email === 'reviewer@example.test'
+                    'name' => $isDemoAdmin
                         ? 'Assessment Reviewer'
                         : 'Event Owner '.substr($email, 12, 3),
                     'email' => $email,
                     'email_verified_at' => $timestamp,
-                    'password' => $password,
-                    'is_admin' => $email === 'reviewer@example.test',
+                    'password' => Hash::make($isDemoAdmin ? 'password' : Str::random(64)),
+                    'is_admin' => $isDemoAdmin,
                     'remember_token' => null,
                     'created_at' => $timestamp,
                     'updated_at' => $timestamp,
@@ -152,11 +154,16 @@ class EventSeeder extends Seeder
             DB::table('users')->insert($rows);
         }
 
-        DB::table('users')
-            ->where('email', 'reviewer@example.test')
-            ->update(['is_admin' => true]);
+        if ($demoAdminEmail) {
+            DB::table('users')
+                ->where('email', $demoAdminEmail)
+                ->update(['is_admin' => true]);
+        }
 
-        $ownerEmails = array_slice($emails, 1);
+        $ownerEmails = array_values(array_filter(
+            $emails,
+            fn (string $email): bool => $email !== $demoAdminEmail,
+        ));
         $ownerIds = [];
 
         foreach (DB::table('users')

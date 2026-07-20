@@ -9,8 +9,13 @@ use Illuminate\Validation\ValidationException;
 
 final class EventLocalDateTimeResolver
 {
-    public function resolve(string $local, string $timezone, ?string $requestedOffset, string $field): CarbonImmutable
-    {
+    public function resolve(
+        string $local,
+        string $timezone,
+        ?string $requestedOffset,
+        string $field,
+        ?string $offsetField = null,
+    ): CarbonImmutable {
         $zone = new DateTimeZone($timezone);
         $wallClock = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $local, new DateTimeZone('UTC'));
 
@@ -44,7 +49,7 @@ final class EventLocalDateTimeResolver
 
         if (count($candidates) > 1) {
             throw ValidationException::withMessages([
-                $field.'_offset' => 'This time occurs twice. Choose one of these UTC offsets: '.implode(' or ', array_keys($candidates)).'.',
+                ($offsetField ?? $field.'_offset') => 'This time occurs twice. Choose one of these UTC offsets: '.implode(' or ', array_keys($candidates)).'.',
             ]);
         }
 

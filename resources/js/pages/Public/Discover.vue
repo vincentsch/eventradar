@@ -126,7 +126,7 @@ function clearFilters() {
                     }}{{ discovery.totalCountIsCapped ? '+' : '' }}
                     {{ discovery.mode === 'search' ? 'matching ' : '' }}events
                 </strong>
-                <span class="text-stone-500">
+                <span class="text-stone-600">
                     · times shown in each event's local time
                 </span>
             </p>

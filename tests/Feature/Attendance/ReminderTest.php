@@ -106,6 +106,19 @@ it('skips a reminder horizon that passed before registration', function () {
             ->firstOrFail()->status)->toBe(DeliveryStatus::Pending);
 });
 
+it('skips reminders whose delivery window has already passed', function () {
+    $attendance = attendanceForReminder();
+    Queue::fake();
+    Carbon::setTestNow($attendance->event->starts_at->subDays(2));
+
+    expect(app(ReminderDispatcher::class)->dispatchDue())->toBe(0)
+        ->and(AttendanceDelivery::query()
+            ->where('kind', 'three_days')
+            ->firstOrFail()->status)->toBe(DeliveryStatus::Skipped);
+
+    Queue::assertNothingPushed();
+});
+
 it('rebuilds pending reminder horizons when an event is rescheduled', function () {
     $attendance = attendanceForReminder();
     Queue::fake();

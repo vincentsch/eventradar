@@ -53,12 +53,6 @@ final class PublicEventFilterOptions
         return array_values($locations);
     }
 
-    /** @return list<string> */
-    public function locationKeys(CarbonImmutable $instant): array
-    {
-        return array_column($this->locations($instant), 'value');
-    }
-
     public function forget(): void
     {
         Cache::forget(self::CACHE_KEY);

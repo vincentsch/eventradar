@@ -28,6 +28,7 @@ class AttendanceController extends Controller
         $intent = EventAttendance::query()
             ->where('event_id', $event)
             ->where('user_id', $request->user()->id)
+            ->whereNull('cancelled_at')
             ->first(['intent'])
             ?->getAttribute('intent');
 

@@ -2,7 +2,7 @@
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
 import { CalendarX2 } from '@lucide/vue';
 
-defineProps<{
+const props = defineProps<{
     attendance: {
         active: boolean;
         event: {
@@ -15,6 +15,16 @@ defineProps<{
 }>();
 
 const page = usePage();
+
+const eventStart = new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: props.attendance.event.timezone,
+    timeZoneName: 'short',
+}).format(new Date(props.attendance.event.starts_at));
 </script>
 
 <template>
@@ -39,6 +49,7 @@ const page = usePage();
             </h1>
             <p class="mt-4 text-stone-600">
                 {{ attendance.event.title }}<br />
+                {{ eventStart }}<br />
                 {{ attendance.event.location }}
             </p>
 

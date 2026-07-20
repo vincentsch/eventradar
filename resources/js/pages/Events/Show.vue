@@ -303,11 +303,13 @@ const galleryItemClasses = (index: number) =>
                     <Form
                         :action="`/events/${event.id}/attendance`"
                         method="put"
+                        v-slot="{ processing }"
                     >
                         <input type="hidden" name="intent" value="interested" />
                         <button
                             type="submit"
-                            class="inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 ring-white/30 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                            :disabled="processing"
+                            class="inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 ring-white/30 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none disabled:cursor-default disabled:opacity-60"
                             :class="
                                 attendance.viewer_intent === 'interested'
                                     ? 'bg-white text-stone-900 hover:bg-stone-100'
@@ -324,11 +326,13 @@ const galleryItemClasses = (index: number) =>
                     <Form
                         :action="`/events/${event.id}/attendance`"
                         method="put"
+                        v-slot="{ processing }"
                     >
                         <input type="hidden" name="intent" value="going" />
                         <button
                             type="submit"
-                            class="inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 ring-white/30 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                            :disabled="processing"
+                            class="inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 ring-white/30 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none disabled:cursor-default disabled:opacity-60"
                             :class="
                                 attendance.viewer_intent === 'going'
                                     ? 'bg-lime-300 text-stone-900 ring-0 hover:bg-lime-200'
@@ -346,10 +350,12 @@ const galleryItemClasses = (index: number) =>
                         v-if="attendance.viewer_intent"
                         :action="`/events/${event.id}/attendance`"
                         method="delete"
+                        v-slot="{ processing }"
                     >
                         <button
                             type="submit"
-                            class="cursor-pointer rounded-full px-4 py-3 text-sm font-bold text-stone-300 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+                            :disabled="processing"
+                            class="cursor-pointer rounded-full px-4 py-3 text-sm font-bold text-stone-300 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none disabled:cursor-default disabled:opacity-60"
                         >
                             Leave list
                         </button>

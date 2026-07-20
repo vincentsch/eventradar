@@ -6,6 +6,7 @@ use App\Domain\Attendance\DeliveryStatus;
 use App\Domain\Events\EventStatus;
 use App\Mail\EventReminderMail;
 use App\Models\AttendanceDelivery;
+use App\Services\Attendance\ReminderDispatcher;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -50,7 +51,8 @@ class SendAttendanceReminder implements ShouldQueue
         $invalid = $attendance->cancelled_at !== null
             || $attendance->revision !== $delivery->attendance_revision
             || ! in_array($event->status->value, EventStatus::publicValues(), true)
-            || $event->ends_at->isPast();
+            || $event->ends_at->isPast()
+            || $delivery->due_at->lt(now('UTC')->subHours(ReminderDispatcher::GRACE_HOURS));
 
         if ($invalid) {
             $this->finish(DeliveryStatus::Skipped, 'Attendance or event is no longer active.');

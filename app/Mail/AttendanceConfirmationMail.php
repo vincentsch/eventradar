@@ -46,7 +46,7 @@ class AttendanceConfirmationMail extends Mailable
         $this->cancelUrl = URL::temporarySignedRoute(
             'attendance.cancel.confirm',
             $event->ends_at,
-            ['attendance' => $attendance->id],
+            ['attendance' => $attendance->id, 'revision' => $attendance->revision],
         );
     }
 

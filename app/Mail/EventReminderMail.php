@@ -56,7 +56,7 @@ class EventReminderMail extends Mailable
         $this->cancelUrl = URL::temporarySignedRoute(
             'attendance.cancel.confirm',
             now()->addDays(7),
-            ['attendance' => $attendance->id],
+            ['attendance' => $attendance->id, 'revision' => $attendance->revision],
         );
     }
 

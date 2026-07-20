@@ -3,9 +3,11 @@
 use App\Console\Commands\DispatchAttendanceReminders;
 use App\Console\Commands\MakeUserAdmin;
 use App\Console\Commands\RebuildEventSearchIndex;
+use App\Http\Middleware\AddSecurityHeaders;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\PreventSearchIndexing;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -34,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            AddSecurityHeaders::class,
+            PreventSearchIndexing::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

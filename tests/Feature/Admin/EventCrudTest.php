@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\ReconcileEventSearchIndex;
+use App\Jobs\RescheduleEventAttendances;
 use App\Models\Event;
 use App\Models\EventAttendance;
 use App\Models\User;
@@ -45,6 +46,25 @@ it('creates an event from local time with an optimized local gallery', function 
     Queue::assertPushed(ReconcileEventSearchIndex::class, fn ($job) => $job->eventId === $event->id);
 });
 
+it('moves attendance rescheduling out of the admin request', function () {
+    Queue::fake();
+    $event = Event::factory()->published()->create([
+        'starts_at' => '2026-08-12 16:00:00',
+        'ends_at' => '2026-08-12 19:00:00',
+        'starts_on_local' => '2026-08-12',
+        'timezone' => 'Europe/Berlin',
+    ]);
+
+    $this->put("/admin/events/{$event->id}", validEventInput([
+        'status' => 'published',
+    ]))->assertRedirect("/admin/events/{$event->id}");
+
+    Queue::assertPushed(
+        RescheduleEventAttendances::class,
+        fn ($job) => $job->eventId === $event->id && $job->queue === 'mail',
+    );
+});
+
 it('rejects local times that disappear during a daylight-saving transition', function () {
     Storage::fake('public');
 
@@ -74,7 +94,24 @@ it('requires an explicit UTC offset when a local time occurs twice', function ()
         ],
     ]))
         ->assertRedirect('/admin/events/create')
-        ->assertSessionHasErrors('starts_at_local_offset');
+        ->assertSessionHasErrors('starts_at_offset');
+});
+
+it('rejects events that last longer than the public duration limit', function () {
+    Storage::fake('public');
+
+    $this->from('/admin/events/create')->post('/admin/events', validEventInput([
+        'starts_at_local' => '2026-08-14T18:00',
+        'ends_at_local' => '2026-08-17T18:01',
+        'images' => [
+            UploadedFile::fake()->image('cover.jpg'),
+            UploadedFile::fake()->image('detail.jpg'),
+        ],
+    ]))
+        ->assertRedirect('/admin/events/create')
+        ->assertSessionHasErrors('ends_at_local');
+
+    expect(Event::query()->where('title', 'Admin-created summer meetup')->exists())->toBeFalse();
 });
 
 it('requires coordinates before an event can be publicly visible', function () {
@@ -167,7 +204,7 @@ function validEventInput(array $overrides = []): array
     return array_replace([
         'title' => 'Admin-created summer meetup',
         'description' => 'A complete event created through the administration workspace.',
-        'organizer_name' => 'Event Visuals',
+        'organizer_name' => 'EventRadar',
         'venue_name' => 'Alexanderplatz Hall',
         'formatted_address' => 'Alexanderplatz 1, 10178 Berlin, Germany',
         'address_line_1' => 'Alexanderplatz 1',

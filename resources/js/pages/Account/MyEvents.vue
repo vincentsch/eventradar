@@ -6,6 +6,7 @@ interface EventCard {
     id: string;
     title: string;
     type: string;
+    status: 'draft' | 'published' | 'cancelled' | 'sold_out';
     starts_at: string;
     ends_at: string;
     timezone: string;
@@ -117,11 +118,22 @@ const formatStart = (event: EventCard) =>
                                     {{ attendance.event.type }}
                                 </p>
                                 <Link
+                                    v-if="
+                                        ['published', 'sold_out'].includes(
+                                            attendance.event.status,
+                                        )
+                                    "
                                     :href="`/events/${attendance.event.id}`"
                                     class="mt-1 block rounded-sm text-xl leading-tight font-extrabold underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none"
                                 >
                                     {{ attendance.event.title }}
                                 </Link>
+                                <h2
+                                    v-else
+                                    class="mt-1 text-xl leading-tight font-extrabold"
+                                >
+                                    {{ attendance.event.title }}
+                                </h2>
                             </div>
                             <span
                                 class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black uppercase"
@@ -153,7 +165,22 @@ const formatStart = (event: EventCard) =>
                         <div
                             class="mt-auto flex flex-wrap items-center gap-2 pt-5"
                         >
+                            <p
+                                v-if="
+                                    !['published', 'sold_out'].includes(
+                                        attendance.event.status,
+                                    )
+                                "
+                                class="mr-auto rounded-full bg-red-100 px-3 py-2 text-xs font-bold text-red-800"
+                            >
+                                This event is no longer public
+                            </p>
                             <Form
+                                v-if="
+                                    ['published', 'sold_out'].includes(
+                                        attendance.event.status,
+                                    )
+                                "
                                 :action="`/events/${attendance.event.id}/attendance`"
                                 method="put"
                             >
@@ -175,6 +202,11 @@ const formatStart = (event: EventCard) =>
                                 </button>
                             </Form>
                             <Form
+                                v-if="
+                                    ['published', 'sold_out'].includes(
+                                        attendance.event.status,
+                                    )
+                                "
                                 :action="`/events/${attendance.event.id}/attendance`"
                                 method="put"
                             >

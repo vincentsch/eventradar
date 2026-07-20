@@ -2,7 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Services\Search\EventSearchIndexer;
+use App\Models\Event;
+use App\Services\Attendance\AttendanceManager;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,16 +11,16 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class ReconcileEventSearchIndex implements ShouldBeUniqueUntilProcessing, ShouldQueue
+class RescheduleEventAttendances implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 5;
+    public int $tries = 3;
 
     /** @var list<int> */
-    public array $backoff = [5, 30, 120, 300];
+    public array $backoff = [30, 120, 600];
 
-    public int $uniqueFor = 600;
+    public int $uniqueFor = 900;
 
     public function __construct(public readonly string $eventId) {}
 
@@ -28,8 +29,12 @@ class ReconcileEventSearchIndex implements ShouldBeUniqueUntilProcessing, Should
         return $this->eventId;
     }
 
-    public function handle(EventSearchIndexer $indexer): void
+    public function handle(AttendanceManager $manager): void
     {
-        $indexer->reconcile($this->eventId);
+        $event = Event::query()->find($this->eventId, ['id', 'status', 'starts_at', 'ends_at']);
+
+        if ($event !== null) {
+            $manager->rescheduleForEvent($event);
+        }
     }
 }

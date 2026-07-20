@@ -12,6 +12,23 @@ it('keeps the public assessment entry and health routes available', function () 
     $this->get('/up')->assertOk();
 });
 
+it('adds crawler exclusion headers when indexing is disabled', function () {
+    config()->set('app.prevent_indexing', true);
+
+    $this->get('/')
+        ->assertOk()
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+});
+
+it('adds defensive browser headers to web responses', function () {
+    $this->get('/')
+        ->assertOk()
+        ->assertHeader('X-Content-Type-Options', 'nosniff')
+        ->assertHeader('X-Frame-Options', 'DENY')
+        ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+        ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+});
+
 it('renders each named public visual through its intended Inertia component', function (string $routeName, string $component) {
     $this->get(route($routeName))
         ->assertOk()

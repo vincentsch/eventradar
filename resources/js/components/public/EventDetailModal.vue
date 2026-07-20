@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { Link, router, useHttp, usePage } from '@inertiajs/vue3';
 import {
     ArrowRight,
     BellRing,
@@ -44,21 +44,25 @@ const isAuthenticated = computed(() => Boolean(page.props.auth.user));
 
 const viewerIntent = ref<AttendanceIntent | null>(null);
 const attendanceBusy = ref(false);
+const statusLookup = useHttp<
+    Record<string, never>,
+    { intent: AttendanceIntent | null }
+>({});
 let statusRequestToken = 0;
 
-function loadViewerIntent(event: PublicEvent) {
+async function loadViewerIntent(event: PublicEvent) {
     const token = ++statusRequestToken;
+    statusLookup.cancel();
 
-    fetch(`/events/${event.id}/attendance/status`, {
-        headers: { Accept: 'application/json' },
-    })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((data: { intent: AttendanceIntent | null } | null) => {
-            if (token === statusRequestToken && data) {
-                viewerIntent.value = data.intent ?? null;
-            }
-        })
-        .catch(() => undefined);
+    try {
+        await statusLookup.get(`/events/${event.id}/attendance/status`);
+
+        if (token === statusRequestToken && statusLookup.response) {
+            viewerIntent.value = statusLookup.response.intent ?? null;
+        }
+    } catch {
+        // Attendance actions remain available if this optional status lookup fails.
+    }
 }
 
 function setIntent(intent: AttendanceIntent) {

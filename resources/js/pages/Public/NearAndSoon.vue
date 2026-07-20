@@ -108,10 +108,7 @@ function focusMapOnEvent(id: string, zoom: number) {
 function selectFromMap(id: string) {
     selectEvent(id);
 
-    if (
-        selectedId.value !== id ||
-        !window.matchMedia('(min-width: 1024px)').matches
-    ) {
+    if (!window.matchMedia('(min-width: 1024px)').matches) {
         return;
     }
 

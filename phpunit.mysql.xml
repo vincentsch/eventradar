@@ -9,6 +9,7 @@
             <directory>tests/Integration/Database</directory>
             <directory>tests/Feature/Search</directory>
             <directory>tests/Feature/Discovery</directory>
+            <directory>tests/Feature/Attendance</directory>
         </testsuite>
     </testsuites>
     <source>

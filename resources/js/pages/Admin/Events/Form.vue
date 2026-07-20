@@ -113,6 +113,13 @@ const addressLookup = useHttp<{ q: string }, { results: AddressSuggestion[] }>({
 });
 
 const errorCount = computed(() => Object.keys(form.errors).length);
+const imageError = computed(
+    () =>
+        form.errors.images ??
+        Object.entries(serverErrors).find(([field]) =>
+            field.startsWith('images.'),
+        )?.[1],
+);
 const hasOffsetErrors = computed(() =>
     Boolean(form.errors.starts_at_offset || form.errors.ends_at_offset),
 );
@@ -560,7 +567,7 @@ const selectClasses =
                             @change="handleInput"
                         />
                     </div>
-                    <InputError :message="form.errors.images" class="mt-2" />
+                    <InputError :message="imageError" class="mt-2" />
 
                     <div
                         v-if="previews.length"

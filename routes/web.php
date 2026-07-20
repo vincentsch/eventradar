@@ -13,18 +13,20 @@ use App\Http\Controllers\NearAndSoonController;
 use App\Http\Controllers\SignedAttendanceController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', DiscoverController::class)->name('home');
-
-Route::get('events-visual-1', DiscoverController::class)->name('events.visual1');
-Route::get('events-visual-2', NearAndSoonController::class)
-    ->middleware('throttle:60,1')
-    ->name('events.visual2');
+Route::middleware('throttle:120,1')->group(function () {
+    Route::get('/', DiscoverController::class)->name('home');
+    Route::get('events-visual-1', DiscoverController::class)->name('events.visual1');
+    Route::get('events-visual-2', NearAndSoonController::class)->name('events.visual2');
+});
 
 Route::redirect('events', '/admin/events')->name('events.index');
-Route::get('events/{event}', [EventController::class, 'show'])->name('events.show');
+Route::get('events/{event}', [EventController::class, 'show'])
+    ->middleware('throttle:120,1')
+    ->name('events.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('events/{event}/attendance', [AttendanceController::class, 'begin'])
+        ->middleware('throttle:120,1')
         ->name('attendance.begin');
     Route::get('events/{event}/attendance/status', [AttendanceController::class, 'status'])
         ->middleware('throttle:60,1')

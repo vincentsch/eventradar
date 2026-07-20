@@ -4,6 +4,7 @@ namespace App\Http\Requests\Public;
 
 use App\Domain\Events\EventType;
 use App\Services\Discovery\PublicEventQuery;
+use App\Services\Discovery\PublicEventSearch;
 use Carbon\CarbonImmutable;
 use Closure;
 use DateTimeImmutable;
@@ -36,7 +37,14 @@ class DiscoverEventsRequest extends FormRequest
             'to' => ['nullable', 'date_format:Y-m-d'],
             'ongoing' => ['nullable', 'boolean'],
             'cursor' => ['nullable', 'string', 'max:512', $this->validCursor()],
-            'page' => ['nullable', 'integer', 'min:1', 'max:56'],
+            'page' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:'.(int) ceil(
+                    (int) config('meilisearch.pagination_max_total_hits') / PublicEventSearch::PAGE_SIZE,
+                ),
+            ],
         ];
     }
 

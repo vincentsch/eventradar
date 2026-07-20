@@ -22,7 +22,11 @@ class EventAttendeeController extends Controller
 
         $intent = in_array($intent, AttendanceIntent::values(), true) ? $intent : null;
         $state = in_array($state, ['active', 'cancelled'], true) ? $state : null;
-        $query = mb_strlen($query) >= 2 && mb_strlen($query) <= 100 ? $query : null;
+        $query = mb_strlen($query) >= 2
+            && mb_strlen($query) <= 100
+            && preg_match('/[%\\\\]/', $query) !== 1
+                ? $query
+                : null;
 
         $attendees = EventAttendance::query()
             ->select([

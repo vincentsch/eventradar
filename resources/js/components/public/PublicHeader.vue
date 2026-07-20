@@ -32,7 +32,7 @@ const linkClasses = (active: boolean) => [
     "after:absolute after:inset-x-3 after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-orange-500 after:transition-opacity after:content-['']",
     active
         ? 'text-stone-900 after:opacity-100'
-        : 'text-stone-500 after:opacity-0 hover:text-stone-900',
+        : 'text-stone-600 after:opacity-0 hover:text-stone-900',
 ];
 </script>
 

@@ -7,12 +7,13 @@ use App\Domain\Events\EventType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveEventRequest;
 use App\Jobs\ReconcileEventSearchIndex;
+use App\Jobs\RescheduleEventAttendances;
 use App\Models\Event;
 use App\Models\EventAttendance;
 use App\Models\EventImage;
 use App\Models\EventMedia;
-use App\Services\Attendance\AttendanceManager;
 use App\Services\Discovery\PublicEventFilterOptions;
+use App\Services\Discovery\PublicEventVisibility;
 use App\Services\Events\EventLocalDateTimeResolver;
 use App\Services\Events\EventMediaManager;
 use Carbon\CarbonImmutable;
@@ -176,7 +177,6 @@ class EventController extends Controller
         string $event,
         EventLocalDateTimeResolver $dates,
         EventMediaManager $media,
-        AttendanceManager $attendance,
         PublicEventFilterOptions $filters,
     ): RedirectResponse {
         $record = Event::query()->select(self::EDIT_COLUMNS)->findOrFail($event);
@@ -196,7 +196,6 @@ class EventController extends Controller
                 $prepared,
                 $scheduleChanged,
                 $visibilityChanged,
-                $attendance,
                 $filters,
             ): void {
                 $record->save();
@@ -206,7 +205,9 @@ class EventController extends Controller
                 }
 
                 if ($scheduleChanged || $visibilityChanged) {
-                    $attendance->rescheduleForEvent($record);
+                    RescheduleEventAttendances::dispatch($record->id)
+                        ->onQueue('mail')
+                        ->afterCommit();
                 }
 
                 DB::afterCommit(fn () => $filters->forget());
@@ -424,16 +425,24 @@ class EventController extends Controller
             $validated['timezone'],
             $validated['starts_at_offset'] ?? null,
             'starts_at_local',
+            'starts_at_offset',
         );
         $end = $dates->resolve(
             $validated['ends_at_local'],
             $validated['timezone'],
             $validated['ends_at_offset'] ?? null,
             'ends_at_local',
+            'ends_at_offset',
         );
 
         if ($end->lte($start)) {
             throw ValidationException::withMessages(['ends_at_local' => 'The event must end after it starts.']);
+        }
+
+        if ($end->gt($start->addHours(PublicEventVisibility::MAX_DURATION_HOURS))) {
+            throw ValidationException::withMessages([
+                'ends_at_local' => 'An event cannot last longer than 72 hours.',
+            ]);
         }
 
         return [

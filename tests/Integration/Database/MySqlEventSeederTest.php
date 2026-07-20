@@ -5,6 +5,7 @@ use Carbon\CarbonImmutable;
 use Database\Seeders\EventSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 uses(RefreshDatabase::class);
 
@@ -14,6 +15,21 @@ beforeEach(function () {
     config()->set('events.seed', 'mysql-contract-v1');
     config()->set('events.seed_reference_at', '2026-07-20T12:00:00Z');
     config()->set('events.allow_full_seed', false);
+    config()->set('events.seed_demo_admin', true);
+});
+
+it('requires an explicit opt-in for the local demo administrator', function () {
+    config()->set('events.seed_demo_admin', false);
+
+    $this->seed(EventSeeder::class);
+
+    $owner = DB::table('users')
+        ->where('email', 'event-owner-001@example.test')
+        ->first(['password']);
+
+    expect(DB::table('users')->where('email', 'reviewer@example.test')->exists())->toBeFalse()
+        ->and($owner)->not->toBeNull()
+        ->and(Hash::check('password', $owner->password))->toBeFalse();
 });
 
 it('seeds the deterministic smoke profile and refuses accidental append', function () {

@@ -98,58 +98,70 @@ class AttendanceManager
 
     public function rescheduleForEvent(Event $event): void
     {
-        DB::transaction(function () use ($event): void {
-            $attendances = EventAttendance::query()
-                ->where('event_id', $event->id)
-                ->whereNull('cancelled_at')
-                ->lockForUpdate()
-                ->get();
-            $now = now('UTC');
+        // Popular events can have many attendees. Small transactions bound row
+        // locks and worker memory while every revision is rebuilt consistently.
+        EventAttendance::query()
+            ->select('id')
+            ->where('event_id', $event->id)
+            ->whereNull('cancelled_at')
+            ->orderBy('id')
+            ->chunkById(200, function ($attendanceIds) use ($event): void {
+                DB::transaction(function () use ($attendanceIds, $event): void {
+                    $ids = $attendanceIds->pluck('id');
+                    $attendances = EventAttendance::query()
+                        ->whereIn('id', $ids)
+                        ->whereNull('cancelled_at')
+                        ->lockForUpdate()
+                        ->get();
+                    $sentConfirmationIds = AttendanceDelivery::query()
+                        ->whereIn('attendance_id', $ids)
+                        ->where('kind', DeliveryKind::Confirmation->value)
+                        ->where('status', DeliveryStatus::Sent->value)
+                        ->pluck('attendance_id')
+                        ->flip();
+                    $now = now('UTC');
 
-            foreach ($attendances as $attendance) {
-                $confirmationWasSent = AttendanceDelivery::query()
-                    ->where('attendance_id', $attendance->id)
-                    ->where('kind', DeliveryKind::Confirmation->value)
-                    ->where('status', DeliveryStatus::Sent->value)
-                    ->exists();
-
-                AttendanceDelivery::query()
-                    ->where('attendance_id', $attendance->id)
-                    ->whereIn('status', [
-                        DeliveryStatus::Pending->value,
-                        DeliveryStatus::Processing->value,
-                        DeliveryStatus::Failed->value,
-                    ])
-                    ->update([
-                        'status' => DeliveryStatus::Skipped->value,
-                        'skipped_at' => $now,
-                        'claim_token' => null,
-                        'claimed_at' => null,
-                        'last_error' => 'Event schedule or visibility changed.',
-                        'updated_at' => $now,
-                    ]);
-
-                $attendance->revision++;
-                $attendance->save();
-
-                if (in_array($event->status->value, EventStatus::publicValues(), true)) {
-                    if (! $confirmationWasSent) {
-                        AttendanceDelivery::query()->create([
-                            'attendance_id' => $attendance->id,
-                            'attendance_revision' => $attendance->revision,
-                            'kind' => DeliveryKind::Confirmation->value,
-                            'status' => DeliveryStatus::Pending->value,
-                            'due_at' => $now,
+                    AttendanceDelivery::query()
+                        ->whereIn('attendance_id', $ids)
+                        ->whereIn('status', [
+                            DeliveryStatus::Pending->value,
+                            DeliveryStatus::Processing->value,
+                            DeliveryStatus::Failed->value,
+                        ])
+                        ->update([
+                            'status' => DeliveryStatus::Skipped->value,
+                            'skipped_at' => $now,
+                            'claim_token' => null,
+                            'claimed_at' => null,
+                            'last_error' => 'Event schedule or visibility changed.',
+                            'updated_at' => $now,
                         ]);
-                        SendAttendanceConfirmation::dispatch($attendance->id, $attendance->revision)
-                            ->onQueue('mail')
-                            ->afterCommit();
-                    }
 
-                    $this->createReminderDeliveries($attendance, $event, $now);
-                }
-            }
-        }, 3);
+                    foreach ($attendances as $attendance) {
+                        $confirmationWasSent = $sentConfirmationIds->has($attendance->id);
+
+                        $attendance->revision++;
+                        $attendance->save();
+
+                        if (in_array($event->status->value, EventStatus::publicValues(), true)) {
+                            if (! $confirmationWasSent) {
+                                AttendanceDelivery::query()->create([
+                                    'attendance_id' => $attendance->id,
+                                    'attendance_revision' => $attendance->revision,
+                                    'kind' => DeliveryKind::Confirmation->value,
+                                    'status' => DeliveryStatus::Pending->value,
+                                    'due_at' => $now,
+                                ]);
+                                SendAttendanceConfirmation::dispatch($attendance->id, $attendance->revision)
+                                    ->onQueue('mail')
+                                    ->afterCommit();
+                            }
+
+                            $this->createReminderDeliveries($attendance, $event, $now);
+                        }
+                    }
+                }, 3);
+            });
     }
 
     private function ensureEventCanAcceptAttendance(Event $event): void

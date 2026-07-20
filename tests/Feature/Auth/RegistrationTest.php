@@ -41,3 +41,27 @@ it('routes administrators to the admin workspace', function () {
         ->get('/account')
         ->assertRedirect('/admin');
 });
+
+it('rate limits account creation by client address', function () {
+    foreach (range(1, 5) as $number) {
+        $this->post('/register', [
+            'name' => "Guest {$number}",
+            'email' => "guest-{$number}@example.test",
+            'password' => 'correct-horse-battery-staple',
+            'password_confirmation' => 'correct-horse-battery-staple',
+        ])->assertRedirect(route('verification.notice', absolute: false));
+
+        $this->post('/logout');
+    }
+
+    $this->from('/register')->post('/register', [
+        'name' => 'One Guest Too Many',
+        'email' => 'guest-6@example.test',
+        'password' => 'correct-horse-battery-staple',
+        'password_confirmation' => 'correct-horse-battery-staple',
+    ])
+        ->assertRedirect('/register')
+        ->assertSessionHasErrors('email');
+
+    $this->assertDatabaseMissing('users', ['email' => 'guest-6@example.test']);
+});

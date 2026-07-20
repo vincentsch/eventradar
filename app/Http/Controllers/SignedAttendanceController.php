@@ -11,8 +11,16 @@ use Inertia\Response;
 
 class SignedAttendanceController extends Controller
 {
-    public function confirm(EventAttendance $attendance): Response
+    public function confirm(Request $request, EventAttendance $attendance): Response
     {
+        $revision = $request->integer('revision');
+        // Let a just-used link show its cancelled state, but never let an old
+        // email manage a later reactivation of the same attendance record.
+        abort_unless(
+            $revision === $attendance->revision
+            || ($attendance->cancelled_at !== null && $revision === $attendance->revision - 1),
+            403,
+        );
         $attendance->load(['event:id,title,starts_at,timezone,venue_name,formatted_address,locality,country']);
 
         return Inertia::render('Attendance/Cancel', [
@@ -39,6 +47,7 @@ class SignedAttendanceController extends Controller
         EventAttendance $attendance,
         AttendanceManager $manager,
     ): RedirectResponse {
+        abort_unless($request->integer('revision') === $attendance->revision, 403);
         $manager->cancel($attendance);
 
         return redirect()->to($request->fullUrl());

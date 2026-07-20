@@ -100,6 +100,10 @@ it('cancels from the account and skips outstanding delivery work', function () {
 
     expect(EventAttendance::query()->sole()->cancelled_at)->not->toBeNull()
         ->and(AttendanceDelivery::query()->where('status', DeliveryStatus::Skipped->value)->count())->toBe(3);
+
+    $this->actingAs($user)
+        ->getJson("/events/{$event->id}/attendance/status")
+        ->assertExactJson(['intent' => null]);
 });
 
 it('sends confirmation from the queued job and records delivery', function () {
@@ -139,7 +143,7 @@ it('uses a signed confirmation page before cancelling from email', function () {
     $url = URL::temporarySignedRoute(
         'attendance.cancel.confirm',
         now()->addDay(),
-        ['attendance' => $attendance->id],
+        ['attendance' => $attendance->id, 'revision' => $attendance->revision],
     );
 
     $this->get($url)
@@ -151,6 +155,13 @@ it('uses a signed confirmation page before cancelling from email', function () {
 
     $this->delete($url)->assertRedirect($url);
     expect($attendance->fresh()->cancelled_at)->not->toBeNull();
+
+    $this->get($url)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('attendance.active', false));
+
+    $this->actingAs($user)->put("/events/{$event->id}/attendance", ['intent' => 'interested']);
+    $this->get($url)->assertForbidden();
 });
 
 it('does not expose attendee email addresses on the public event detail', function () {
@@ -174,4 +185,24 @@ it('does not expose attendee email addresses on the public event detail', functi
             ->where('attendance.attendees.0.name', 'Private P.')
             ->where('attendance.attendees.0.intent', 'interested'))
         ->assertDontSee('private-attendee@example.test');
+});
+
+it('keeps a cancelled event manageable without linking to its private page', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+    $event = Event::factory()->published()->create([
+        'starts_at' => now('UTC')->addDays(10),
+        'ends_at' => now('UTC')->addDays(10)->addHours(2),
+        'starts_on_local' => now('UTC')->addDays(10)->toDateString(),
+    ]);
+    $this->actingAs($user)->put("/events/{$event->id}/attendance", ['intent' => 'going']);
+    $event->update(['status' => 'cancelled']);
+
+    $this->actingAs($user)
+        ->get('/my-events')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('attendances.data.0.event.id', $event->id)
+            ->where('attendances.data.0.event.status', 'cancelled'))
+        ->assertDontSee("href=\"/events/{$event->id}\"", false);
 });
