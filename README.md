@@ -9,6 +9,8 @@
 </p>
 
 <p align="center">
+  <a href="https://eventradar.schmalbach.dev">Live demo</a>
+  &nbsp;&middot;&nbsp;
   <a href="CODING_TEST.md">Original assessment brief</a>
 </p>
 
@@ -42,15 +44,17 @@ days and 24 hours before an event.
 ## Architecture
 
 ```mermaid
-flowchart LR
-    B[Browser] --> L[Laravel + Inertia]
-    L --> DB[(MySQL source of truth)]
-    L --> M[(Meilisearch discovery)]
-    L --> R[(Redis)]
-    R --> H[Laravel Horizon]
+flowchart TB
+    B[Browser] -->|Inertia pages and actions| L[Laravel]
+    L -->|canonical reads and writes| DB[(MySQL)]
+    L -->|discovery query| M[(Meilisearch)]
+    M -->|ordered event IDs| L
+    L -->|hydrate selected IDs| DB
+    L -->|queued mail work| R[(Redis)]
+    R --> H[Horizon workers]
     H --> P[Postmark]
-    B --> MB[Mapbox tiles]
-    L --> MG[Mapbox geocoding]
+    B -->|map tiles| MB[Mapbox]
+    L -->|admin and click-only geocoding| MB
 ```
 
 MySQL remains the presentation truth. Meilisearch is a replaceable discovery read model that
@@ -128,34 +132,11 @@ important baseline problems:
 
 ## AI-assisted engineering workflow
 
-I used AI agents as implementation and review tools inside a developer-controlled loop. I retained
-ownership of the brief interpretation, architecture, data model, trade-offs, acceptance criteria,
-code review, and final QA.
-
-1. Inspect the brief and repository without changing code.
-2. Propose and challenge architecture decisions.
-3. Implement one bounded slice with explicit constraints.
-4. Run an independent read-only review.
-5. Inspect the diff and behavior, then accept, alter, or reject each finding.
-6. Verify the slice and repeat.
-
-Example investigation prompt:
-
-> Read the brief and inspect the current routes, data model, and seeded workload. Do not edit any
-> files. Compare the implementation with the assessment, identify scale and privacy risks,
-> challenge my proposed MySQL and Meilisearch split, and give a clear recommendation.
-
-Example implementation prompt:
-
-> Implement only this agreed slice. Keep MySQL canonical, use explicit Inertia props, preserve the
-> established visual components, and add focused regression coverage. Do not broaden the feature or
-> change unrelated files.
-
-Example review prompt:
-
-> Review this diff read-only for correctness, privacy, realistic-data performance, and compliance
-> with the brief. Give only concrete blockers with file references. Do not edit files or propose a
-> broader rewrite.
+I treat AI agents as an engineering team and myself as the lead developer. They help across the
+work with investigation, feedback, suggestions, implementation, testing, and review, but I retain
+control of the product direction, architecture, trade-offs, and final code. Implementation requests
+are deliberately specific about the intended outcome, constraints, and exclusions, and I inspect
+the resulting code and behavior before accepting it. This is agentic engineering, not vibe coding.
 
 ## Local setup
 
@@ -181,6 +162,11 @@ create an administrator explicitly:
 ```bash
 ./vendor/bin/sail artisan user:make-admin person@example.com
 ```
+
+The command promotes an existing account and verifies it if necessary. If the email does not exist,
+it interactively asks for a name and password and creates a verified administrator. Automated
+deployments can pass `--name` and `--password` non-interactively. Supplying `--password` for an
+existing account intentionally resets that account's password.
 
 Mailpit is available on `FORWARD_MAILPIT_DASHBOARD_PORT`. The Sail `horizon` and `scheduler`
 services process confirmation and reminder work without extra terminals.
@@ -234,11 +220,12 @@ Start from `.env.example`. The application-specific production settings are:
 Uploaded images use Laravel's `public` disk and require the `public/storage` symlink. The server
 needs Imagick for upload validation, metadata stripping, resizing, and WebP encoding.
 
-## Production with Forge
+## Deployment
 
-Create a normal Laravel site with its web root set to `public`, PHP 8.3 or newer, MySQL 8, Redis,
-Imagick, and a private-network Meilisearch instance. Set production environment values before the
-first deployment, including `APP_DEBUG=false` and `EVENT_SEED_DEMO_ADMIN=false`.
+Deploy as a normal Laravel application with its web root set to `public`, PHP 8.3 or newer, MySQL 8,
+Redis, Imagick, a Horizon process, the Laravel scheduler, and a private Meilisearch instance. Set
+the production environment before the first deployment, including `APP_DEBUG=false` and
+`EVENT_SEED_DEMO_ADMIN=false`.
 
 A repeatable deploy script can use:
 
@@ -253,21 +240,6 @@ php artisan optimize
 php artisan horizon:terminate
 ```
 
-Enable Forge's scheduler and Horizon management. Run the initial full seed and
-`events:search-index` separately from the deploy script because both are deliberate, long-running
-operations. Configure Postmark with a verified sender before testing real email delivery.
-
-## Scale validation
-
-On the development workstation used for this assessment, the explicit full seed created 1,250,000
-MySQL events in 696.68 seconds at 1,794 rows per second with 71.4 MiB peak PHP memory. The current
-visibility rules projected 803,815 eligible events into Meilisearch in 81 tasks and 430.61 seconds,
-then atomically promoted the temporary index. These are reproducibility measurements from one
-machine, not universal production throughput claims.
-
-The full-scale run was followed by indexed query-plan checks, public desktop and mobile browser
-flows, complete admin pagination, and search reconciliation tests.
-
-## License
-
-EventRadar is released under the [MIT License](LICENSE).
+Keep Horizon and the scheduler supervised. Run the initial full seed and `events:search-index`
+outside the normal deployment command because both are deliberate, long-running operations.
+Configure Postmark with a verified sender before testing real email delivery.
