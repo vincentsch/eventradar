@@ -30,6 +30,7 @@ export interface PublicEvent {
     locationLabel: string;
     latitude: number | null;
     longitude: number | null;
+    images: PublicEventImage[];
     image: PublicEventImage;
     detailImage: PublicEventImage;
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Events\MapboxGeocoder;
+use Illuminate\Http\Client\HttpClientException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +22,12 @@ class AddressSearchController extends Controller
         } catch (RuntimeException) {
             throw ValidationException::withMessages([
                 'q' => 'Address lookup is not configured. Enter the address and coordinates manually.',
+            ]);
+        } catch (HttpClientException $exception) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'q' => 'Address lookup is temporarily unavailable. Enter the address and coordinates manually.',
             ]);
         }
 

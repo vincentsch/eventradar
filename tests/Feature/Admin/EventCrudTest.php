@@ -46,6 +46,40 @@ it('creates an event from local time with an optimized local gallery', function 
     Queue::assertPushed(ReconcileEventSearchIndex::class, fn ($job) => $job->eventId === $event->id);
 });
 
+it('atomically replaces a managed event gallery and removes the old files', function () {
+    Storage::fake('public');
+    Queue::fake();
+
+    $this->post('/admin/events', validEventInput([
+        'images' => [
+            UploadedFile::fake()->image('old-cover.jpg'),
+            UploadedFile::fake()->image('old-detail.jpg'),
+        ],
+    ]))->assertRedirect();
+
+    $event = Event::query()->where('title', 'Admin-created summer meetup')->firstOrFail();
+    $oldPaths = $event->media
+        ->flatMap(fn ($image): array => [$image->path, $image->card_path])
+        ->all();
+
+    $this->put("/admin/events/{$event->id}", validEventInput([
+        'images' => [
+            UploadedFile::fake()->image('new-cover.jpg'),
+            UploadedFile::fake()->image('new-detail.jpg'),
+            UploadedFile::fake()->image('new-gallery.jpg'),
+        ],
+    ]))->assertRedirect("/admin/events/{$event->id}");
+
+    $newMedia = $event->refresh()->media;
+    expect($newMedia)->toHaveCount(3)
+        ->and($newMedia->pluck('position')->all())->toBe([0, 1, 2]);
+
+    Storage::disk('public')->assertMissing($oldPaths);
+    foreach ($newMedia as $image) {
+        Storage::disk('public')->assertExists([$image->path, $image->card_path]);
+    }
+});
+
 it('moves attendance rescheduling out of the admin request', function () {
     Queue::fake();
     $event = Event::factory()->published()->create([
@@ -196,6 +230,16 @@ it('keeps permanent Mapbox geocoding behind the admin boundary', function () {
     Http::assertSent(fn ($request) => $request['permanent'] === 'true'
         && $request['access_token'] === 'secret-server-token'
         && $request['autocomplete'] === 'false');
+});
+
+it('turns a Mapbox outage into a recoverable manual-entry error', function () {
+    config()->set('services.mapbox.geocoding_token', 'secret-server-token');
+    Http::fake(['api.mapbox.com/*' => Http::response([], 503)]);
+
+    $this->from('/admin/events/create')
+        ->get('/admin/address-search?q=Alexanderplatz%201')
+        ->assertRedirect('/admin/events/create')
+        ->assertSessionHasErrors('q');
 });
 
 /** @param array<string, mixed> $overrides */

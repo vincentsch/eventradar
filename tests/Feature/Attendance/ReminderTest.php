@@ -57,24 +57,26 @@ it('claims a due three-day reminder once', function () {
         ->firstOrFail()->status)->toBe(DeliveryStatus::Processing);
 });
 
-it('sends and records a claimed reminder', function () {
+it('sends and records a claimed reminder', function (string $kind) {
     $attendance = attendanceForReminder();
     Queue::fake();
     Mail::fake();
-    Carbon::setTestNow($attendance->event->starts_at->subDay());
+    Carbon::setTestNow($kind === 'three_days'
+        ? $attendance->event->starts_at->subDays(3)
+        : $attendance->event->starts_at->subDay());
 
     app(ReminderDispatcher::class)->dispatchDue();
     $delivery = AttendanceDelivery::query()
-        ->where('kind', 'one_day')
+        ->where('kind', $kind)
         ->firstOrFail();
 
     (new SendAttendanceReminder($delivery->id, $delivery->claim_token))->handle();
 
-    Mail::assertSent(EventReminderMail::class, fn ($mail) => $mail->hasTo($attendance->user->email) && $mail->kind->value === 'one_day'
+    Mail::assertSent(EventReminderMail::class, fn ($mail) => $mail->hasTo($attendance->user->email) && $mail->kind->value === $kind
     );
     expect($delivery->fresh()->status)->toBe(DeliveryStatus::Sent)
         ->and($delivery->fresh()->sent_at)->not->toBeNull();
-});
+})->with(['three_days', 'one_day']);
 
 it('never queues reminders after attendance is cancelled', function () {
     $attendance = attendanceForReminder();

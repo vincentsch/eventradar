@@ -22,7 +22,6 @@ import {
 import { computed, nextTick, ref, watch } from 'vue';
 import {
     eventCategoryLabel,
-    eventDetailImageSrc,
     eventWeekday,
 } from '@/components/public/publicEventDisplay';
 import { useSnapCarousel } from '@/components/public/useSnapCarousel';
@@ -125,13 +124,7 @@ const galleryImages = computed(() => {
         return [];
     }
 
-    return [
-        { src: props.event.image.src, alt: props.event.image.alt },
-        {
-            src: eventDetailImageSrc(props.event),
-            alt: props.event.detailImage.alt,
-        },
-    ].filter(
+    return props.event.images.filter(
         (image, index, images) =>
             images.findIndex((candidate) => candidate.src === image.src) ===
             index,

@@ -16,6 +16,14 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Throwable;
 
+/**
+ * Sends only the delivery claimed by the dispatcher. The claim token and
+ * attendance revision make delayed or superseded jobs harmless.
+ *
+ * SMTP delivery and the ledger update cannot be one atomic transaction. A
+ * worker crash between them can repeat a message, which is preferable to
+ * marking an unsent reminder as delivered.
+ */
 class SendAttendanceReminder implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;

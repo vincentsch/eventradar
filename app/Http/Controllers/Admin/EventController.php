@@ -125,19 +125,24 @@ class EventController extends Controller
         $event->image_set_key = $this->defaultImageSet($attributes['type']);
         $event->setAttribute('payload', json_encode(['source' => 'admin'], JSON_THROW_ON_ERROR));
         $prepared = $media->prepare($event, $this->uploadedImages($request));
+        $oldPaths = [];
 
         try {
-            DB::transaction(function () use ($event, $media, $prepared, $filters): void {
+            DB::transaction(function () use ($event, $media, $prepared, &$oldPaths): void {
                 $event->save();
-                $media->replace($event, $prepared);
-                DB::afterCommit(fn () => $filters->forget());
-                ReconcileEventSearchIndex::dispatch($event->id)->onQueue('search')->afterCommit();
+                $oldPaths = $media->replace($event, $prepared);
             });
         } catch (Throwable $exception) {
             $media->discard($prepared);
 
             throw $exception;
         }
+
+        // Once the transaction returns, the new media records are committed.
+        // Queue or cache failures must not enter the rollback cleanup above.
+        ReconcileEventSearchIndex::dispatch($event->id)->onQueue('search')->afterCommit();
+        $filters->forget();
+        $media->deletePaths($oldPaths);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Event created.']);
 
@@ -188,30 +193,20 @@ class EventController extends Controller
         $prepared = $request->hasFile('images')
             ? $media->prepare($record, $this->uploadedImages($request))
             : null;
+        $oldPaths = [];
 
         try {
             DB::transaction(function () use (
                 $record,
                 $media,
                 $prepared,
-                $scheduleChanged,
-                $visibilityChanged,
-                $filters,
+                &$oldPaths,
             ): void {
                 $record->save();
 
                 if ($prepared !== null) {
-                    $media->replace($record, $prepared);
+                    $oldPaths = $media->replace($record, $prepared);
                 }
-
-                if ($scheduleChanged || $visibilityChanged) {
-                    RescheduleEventAttendances::dispatch($record->id)
-                        ->onQueue('mail')
-                        ->afterCommit();
-                }
-
-                DB::afterCommit(fn () => $filters->forget());
-                ReconcileEventSearchIndex::dispatch($record->id)->onQueue('search')->afterCommit();
             });
         } catch (Throwable $exception) {
             if ($prepared !== null) {
@@ -220,6 +215,18 @@ class EventController extends Controller
 
             throw $exception;
         }
+
+        // External work stays outside the media rollback boundary for the same
+        // reason as create: this point is reached only after a successful commit.
+        if ($scheduleChanged || $visibilityChanged) {
+            RescheduleEventAttendances::dispatch($record->id)
+                ->onQueue('mail')
+                ->afterCommit();
+        }
+
+        ReconcileEventSearchIndex::dispatch($record->id)->onQueue('search')->afterCommit();
+        $filters->forget();
+        $media->deletePaths($oldPaths);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Event updated.']);
 

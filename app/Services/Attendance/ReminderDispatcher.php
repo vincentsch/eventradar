@@ -34,6 +34,8 @@ class ReminderDispatcher
                 'updated_at' => $now,
             ]);
 
+        // Claims are committed before jobs are dispatched. The row lock keeps
+        // overlapping scheduler processes from queueing the same delivery.
         /** @var list<array{id: int, token: string}> $claims */
         $claims = DB::transaction(function () use ($limit, $now, $staleBefore): array {
             $query = AttendanceDelivery::query()

@@ -37,6 +37,16 @@ it('maps canonical event time location and both checked images without private f
         'timezoneLabel' => 'CEST',
         'timezone' => 'Europe/Berlin',
         'locationLabel' => 'Berlin, Germany',
+        'images' => [
+            [
+                'src' => '/images/events/concert-industrial-after-dark/cover.webp',
+                'alt' => 'Electronic performer playing to a crowd inside a converted brick hall',
+            ],
+            [
+                'src' => '/images/events/concert-industrial-after-dark/detail.webp',
+                'alt' => 'Crowd and stage lighting across a converted industrial concert venue',
+            ],
+        ],
         'image' => [
             'src' => '/images/events/concert-industrial-after-dark/cover.webp',
             'alt' => 'Electronic performer playing to a crowd inside a converted brick hall',
@@ -62,4 +72,34 @@ it('uses the event timezone through DST and preserves coordinate-less cards', fu
         ->and($data['timezoneLabel'])->toBe('CET')
         ->and($data['latitude'])->toBeNull()
         ->and($data['longitude'])->toBeNull();
+});
+
+it('projects every uploaded gallery image in its saved order', function () {
+    $event = Event::factory()->published()->create();
+
+    foreach (range(0, 2) as $position) {
+        $event->media()->create([
+            'disk' => 'public',
+            'path' => "events/{$event->id}/image-{$position}.webp",
+            'card_path' => "events/{$event->id}/image-{$position}-card.webp",
+            'position' => $position,
+            'width' => 1200,
+            'height' => 800,
+            'card_width' => 720,
+            'card_height' => 480,
+            'mime_type' => 'image/webp',
+            'byte_size' => 1000,
+            'sha256' => str_repeat((string) $position, 64),
+            'alt' => "Gallery image {$position}",
+        ]);
+    }
+
+    $data = (new PublicEventData)->build($event->load(['media', 'imageSet.images']));
+
+    expect($data['images'])->toHaveCount(3)
+        ->and(array_column($data['images'], 'src'))->toBe([
+            "/storage/events/{$event->id}/image-0-card.webp",
+            "/storage/events/{$event->id}/image-1.webp",
+            "/storage/events/{$event->id}/image-2.webp",
+        ]);
 });

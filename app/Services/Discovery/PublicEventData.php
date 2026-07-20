@@ -70,6 +70,7 @@ final class PublicEventData
             'locationLabel' => $this->locationLabel($event),
             'latitude' => $event->latitude === null ? null : (float) $event->latitude,
             'longitude' => $event->longitude === null ? null : (float) $event->longitude,
+            'images' => $images,
             'image' => $cover,
             'detailImage' => $detail,
         ];

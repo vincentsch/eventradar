@@ -33,10 +33,14 @@ it('creates one attendance and its durable delivery schedule', function () {
         ->assertRedirect();
 
     $attendance = EventAttendance::query()->sole();
+    $threeDays = $attendance->deliveries()->where('kind', 'three_days')->firstOrFail();
+    $oneDay = $attendance->deliveries()->where('kind', 'one_day')->firstOrFail();
     expect($attendance->intent->value)->toBe('going')
         ->and($attendance->cancelled_at)->toBeNull()
         ->and($attendance->deliveries()->count())->toBe(3)
-        ->and($attendance->deliveries()->where('status', DeliveryStatus::Pending->value)->count())->toBe(3);
+        ->and($attendance->deliveries()->where('status', DeliveryStatus::Pending->value)->count())->toBe(3)
+        ->and($threeDays->due_at->equalTo($event->starts_at->subDays(3)))->toBeTrue()
+        ->and($oneDay->due_at->equalTo($event->starts_at->subDay()))->toBeTrue();
 
     Queue::assertPushed(SendAttendanceConfirmation::class, fn ($job) => $job->attendanceId === $attendance->id && $job->attendanceRevision === 1
     );

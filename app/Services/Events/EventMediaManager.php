@@ -4,13 +4,16 @@ namespace App\Services\Events;
 
 use App\Models\Event;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Imagick;
 use RuntimeException;
 use Throwable;
 
+/**
+ * Prepares new local files before persistence and swaps only their metadata in
+ * the caller's transaction. Replaced paths are returned for post-commit cleanup.
+ */
 final class EventMediaManager
 {
     private const DISK = 'public';
@@ -40,12 +43,13 @@ final class EventMediaManager
         return new PreparedEventMedia($rows, $newPaths);
     }
 
-    public function replace(Event $event, PreparedEventMedia $prepared): void
+    /** @return list<string> Paths that are safe to delete after the transaction commits. */
+    public function replace(Event $event, PreparedEventMedia $prepared): array
     {
-        $oldPaths = $event->media()
+        $oldPaths = array_values($event->media()
             ->get(['path', 'card_path'])
             ->flatMap(fn ($media): array => [$media->path, $media->card_path])
-            ->all();
+            ->all());
 
         try {
             $event->media()->delete();
@@ -56,7 +60,15 @@ final class EventMediaManager
             throw $exception;
         }
 
-        DB::afterCommit(fn () => Storage::disk(self::DISK)->delete($oldPaths));
+        return $oldPaths;
+    }
+
+    /** @param list<string> $paths */
+    public function deletePaths(array $paths): void
+    {
+        if ($paths !== []) {
+            Storage::disk(self::DISK)->delete($paths);
+        }
     }
 
     public function discard(PreparedEventMedia $prepared): void
