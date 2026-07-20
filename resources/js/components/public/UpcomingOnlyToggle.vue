@@ -27,7 +27,7 @@ defineEmits<{
                 "
             />
             <Check
-                class="pointer-events-none size-3 text-white opacity-0 peer-checked:opacity-100"
+                class="pointer-events-none relative z-10 size-3 text-white opacity-0 peer-checked:opacity-100"
                 :stroke-width="3"
                 aria-hidden="true"
             />
