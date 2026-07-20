@@ -50,6 +50,7 @@ function applyFilters(parameters: PublicEventParameters) {
     router.get(currentPath.value, parameters, {
         replace: true,
         preserveState: true,
+        only: ['events', 'query', 'discovery'],
         reset: ['events'],
         onStart: () => {
             if (visit === latestFilterVisit) {
