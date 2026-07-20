@@ -151,17 +151,6 @@ features, I fixed several problems in the supplied code:
   application actually uses into normal MySQL columns so they can be validated, filtered, and
   indexed efficiently.
 
-## AI-assisted engineering workflow
-
-I work with AI agents as an engineering team, with myself as the lead developer. I use them
-throughout the process for investigation, suggestions, implementation, testing, and review. Their
-input helps me move faster, but I make the decisions and remain responsible for the product,
-technical approach, and final code.
-
-When an agent implements something, I give it detailed instructions about the exact task and its
-limits. I then review the code and test the result before accepting it. I call this agentic
-engineering, not vibe coding.
-
 ## Local setup
 
 You need Docker and Composer. The ports listed in `.env.example` must also be available.
