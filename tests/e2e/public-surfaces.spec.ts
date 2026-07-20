@@ -87,7 +87,10 @@ test('discovery filters, pagination, details, and map work with live data', asyn
     await expect(cards).toHaveCount(36);
 
     const category = page.locator('#discover-category');
-    const selectedType = await category.locator('option').nth(1).getAttribute('value');
+    const selectedType = await category
+        .locator('option')
+        .nth(1)
+        .getAttribute('value');
     expect(selectedType).toBeTruthy();
     await category.selectOption(selectedType!);
     await page.getByRole('button', { name: 'Apply filters' }).click();
@@ -109,14 +112,16 @@ test('discovery filters, pagination, details, and map work with live data', asyn
         page.getByRole('button', { name: 'Search this area' }),
     ).toBeVisible({ timeout: 15_000 });
 
-    const agendaDays = await page.locator('[data-agenda-day]').evaluateAll((days) =>
-        days.map((day) => ({
-            key: day.getAttribute('data-agenda-day') ?? '',
-            times: Array.from(day.querySelectorAll('[data-agenda-time]')).map(
-                (event) => event.getAttribute('data-agenda-time') ?? '',
-            ),
-        })),
-    );
+    const agendaDays = await page
+        .locator('[data-agenda-day]')
+        .evaluateAll((days) =>
+            days.map((day) => ({
+                key: day.getAttribute('data-agenda-day') ?? '',
+                times: Array.from(
+                    day.querySelectorAll('[data-agenda-time]'),
+                ).map((event) => event.getAttribute('data-agenda-time') ?? ''),
+            })),
+        );
     const dayKeys = agendaDays.map((day) => day.key);
     expect(dayKeys).toEqual([...new Set(dayKeys)].sort());
 

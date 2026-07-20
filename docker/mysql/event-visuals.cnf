@@ -1,0 +1,5 @@
+[mysqld]
+# Keep the full assessment catalogue and its indexes out of the tiny container defaults.
+# Durability settings remain at their MySQL defaults.
+innodb_buffer_pool_size=2G
+innodb_redo_log_capacity=1G

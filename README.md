@@ -29,12 +29,15 @@ The seeded administrator is `reviewer@example.test` with password `password`. Ma
 on the configured `FORWARD_MAILPIT_DASHBOARD_PORT`. Horizon and the scheduler run as Compose
 services, so confirmations and reminders work without extra terminals.
 
-The default `dev` seed creates 10,000 deterministic events. For a quick reset or the explicit scale
-profile:
+The default `dev` seed creates 10,000 deterministic events. The Sail MySQL service reserves a 2 GB
+InnoDB buffer pool for representative indexed-catalogue work. For a quick reset or the explicit
+scale profile:
 
 ```bash
-EVENT_SEED_PROFILE=smoke ./vendor/bin/sail artisan migrate:fresh --seed
-EVENT_SEED_PROFILE=full EVENT_SEED_ALLOW_FULL=true ./vendor/bin/sail artisan migrate:fresh --seed
+./vendor/bin/sail shell -c \
+  'EVENT_SEED_PROFILE=smoke php artisan migrate:fresh --seed'
+./vendor/bin/sail shell -c \
+  'EVENT_SEED_PROFILE=full EVENT_SEED_ALLOW_FULL=true php artisan migrate:fresh --seed'
 ```
 
 Rebuild Meilisearch after replacing the catalogue. Ordinary admin edits enqueue a one-event

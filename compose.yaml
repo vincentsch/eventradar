@@ -113,6 +113,7 @@ services:
         volumes:
             - 'sail-mysql:/var/lib/mysql'
             - './docker/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh:ro'
+            - './docker/mysql/event-visuals.cnf:/etc/mysql/conf.d/90-event-visuals.cnf:ro'
         networks:
             - sail
         healthcheck:

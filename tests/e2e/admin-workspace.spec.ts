@@ -17,7 +17,9 @@ test('the reviewer browses, paginates, filters, and inspects database events', a
     await page.getByRole('button', { name: 'Log in' }).click();
 
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole('heading', { name: 'Event catalogue' })).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Event catalogue' }),
+    ).toBeVisible();
 
     await page.getByRole('link', { name: 'Events', exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/events$/);
@@ -31,12 +33,18 @@ test('the reviewer browses, paginates, filters, and inspects database events', a
     await page.getByLabel('Status').selectOption('cancelled');
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page).toHaveURL(/status=cancelled/);
-    await expect(page.locator('tbody').getByText('cancelled').first()).toBeVisible();
+    await expect(
+        page.locator('tbody').getByText('cancelled').first(),
+    ).toBeVisible();
 
     await page.getByRole('link', { name: 'Inspect' }).first().click();
     await expect(page).toHaveURL(/\/admin\/events\/[0-9a-f-]+$/);
-    await expect(page.getByRole('heading', { name: 'Normalized event' })).toBeVisible();
-    await expect(page.getByText(/bytes$/)).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Normalized event' }),
+    ).toBeVisible();
+    await expect(page.getByText('Raw provenance').locator('..')).toContainText(
+        /[\d,]+ bytes/,
+    );
 
     await page.goto('/admin/events?status=published');
     await page.getByRole('link', { name: 'Inspect' }).first().click();
