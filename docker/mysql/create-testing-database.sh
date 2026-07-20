@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-testing_database="${MYSQL_TEST_DATABASE:-event_visuals_testing}"
+testing_database="${MYSQL_TEST_DATABASE:-eventradar_testing}"
 
 if [[ ! "$testing_database" =~ ^[a-zA-Z0-9_]+$ ]]; then
     echo "Invalid MySQL testing database name: $testing_database" >&2
