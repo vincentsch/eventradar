@@ -1,0 +1,357 @@
+{
+  "sets": [
+    {
+      "category": "concert",
+      "images": [
+        {
+          "alt": "Electronic performer playing to a crowd inside a converted brick hall",
+          "height": 1152,
+          "path": "/images/events/concert-industrial-after-dark/cover.webp",
+          "role": "cover",
+          "sha256": "0b4bac25db2b2f7c8b7bd0115c04e673f874a7570d01df1f87f6a3690ea1ff42",
+          "width": 928
+        },
+        {
+          "alt": "Crowd and stage lighting across a converted industrial concert venue",
+          "height": 848,
+          "path": "/images/events/concert-industrial-after-dark/detail.webp",
+          "role": "detail",
+          "sha256": "1bf86beb0bbe7ec2cb51fec653a10064ce6039e065adb9d8521e4a4d3aeb0ed6",
+          "width": 1264
+        }
+      ],
+      "key": "concert-industrial-after-dark"
+    },
+    {
+      "category": "concert",
+      "images": [
+        {
+          "alt": "Audience watching an open-air concert in a brick courtyard at sunset",
+          "height": 1152,
+          "path": "/images/events/concert-courtyard-golden-hour/cover.webp",
+          "role": "cover",
+          "sha256": "780d5b38cec2dc17aa37189eedbdfdd326d57533dea8cf3d4d9659f61132ed99",
+          "width": 928
+        },
+        {
+          "alt": "Wide view of a golden-hour courtyard concert and its compact stage",
+          "height": 848,
+          "path": "/images/events/concert-courtyard-golden-hour/detail.webp",
+          "role": "detail",
+          "sha256": "452037a21b5af96f4e8c96461cdacf05ba549beb34a8e724099b201aed8aff8f",
+          "width": 1264
+        }
+      ],
+      "key": "concert-courtyard-golden-hour"
+    },
+    {
+      "category": "conference",
+      "images": [
+        {
+          "alt": "Speaker addressing an audience in a warm timber auditorium",
+          "height": 1152,
+          "path": "/images/events/conference-timber-ideas-forum/cover.webp",
+          "role": "cover",
+          "sha256": "e3ddbc68e6ed0709abd78e042da4dcbde8da7a698f8998ba635664c74aa613ec",
+          "width": 928
+        },
+        {
+          "alt": "Wide view of a design conference inside a daylight timber auditorium",
+          "height": 848,
+          "path": "/images/events/conference-timber-ideas-forum/detail.webp",
+          "role": "detail",
+          "sha256": "2a2cedcd627155430292d79a1772fc449e525fe74c79eeb808619611bf9022d3",
+          "width": 1264
+        }
+      ],
+      "key": "conference-timber-ideas-forum"
+    },
+    {
+      "category": "conference",
+      "images": [
+        {
+          "alt": "Panelist speaking at an evening conference in a rooftop pavilion",
+          "height": 1152,
+          "path": "/images/events/conference-rooftop-city-forum/cover.webp",
+          "role": "cover",
+          "sha256": "130af7e55d7c2879ee040092f6a379b8b410fdb88f80e9b36ad3694970426d59",
+          "width": 928
+        },
+        {
+          "alt": "Conference audience and panel framed by a city skyline at blue hour",
+          "height": 848,
+          "path": "/images/events/conference-rooftop-city-forum/detail.webp",
+          "role": "detail",
+          "sha256": "088be6aea1054db0e5e92171e2107ded377ff290bf4bfe6344fce8db95484816",
+          "width": 1264
+        }
+      ],
+      "key": "conference-rooftop-city-forum"
+    },
+    {
+      "category": "meetup",
+      "images": [
+        {
+          "alt": "People sharing handmade objects around a community studio table",
+          "height": 1152,
+          "path": "/images/events/meetup-neighborhood-makers-table/cover.webp",
+          "role": "cover",
+          "sha256": "9aa4a60eb08e0104a4f3eee1d5871eeb2e70f8a5a165913455aa5d88c20f38bb",
+          "width": 928
+        },
+        {
+          "alt": "Neighborhood makers talking along a long table in a bright studio",
+          "height": 848,
+          "path": "/images/events/meetup-neighborhood-makers-table/detail.webp",
+          "role": "detail",
+          "sha256": "c73061fac1f1b6e2d190ff12ace0cf7a22202089c3edbf7996a007a1724e30b1",
+          "width": 1264
+        }
+      ],
+      "key": "meetup-neighborhood-makers-table"
+    },
+    {
+      "category": "meetup",
+      "images": [
+        {
+          "alt": "Three people talking at a relaxed rooftop language exchange",
+          "height": 1152,
+          "path": "/images/events/meetup-rooftop-language-exchange/cover.webp",
+          "role": "cover",
+          "sha256": "864752242f146b5684e4aebd3e1018ca4de3ee353f52ec6ab88720b61c4b7f1f",
+          "width": 928
+        },
+        {
+          "alt": "Small conversation groups gathering on a planted rooftop at dusk",
+          "height": 848,
+          "path": "/images/events/meetup-rooftop-language-exchange/detail.webp",
+          "role": "detail",
+          "sha256": "20a9902074d6ed81756501f597a7a9bb03c0734fcaa6d4a626bb8fc6552e0adb",
+          "width": 1264
+        }
+      ],
+      "key": "meetup-rooftop-language-exchange"
+    },
+    {
+      "category": "workshop",
+      "images": [
+        {
+          "alt": "Participants shaping clay with an instructor in a ceramics studio",
+          "height": 1152,
+          "path": "/images/events/workshop-ceramic-studio/cover.webp",
+          "role": "cover",
+          "sha256": "cd41751af8c5fc458656ae6bcb015aab1ab62516be36ad76a3fb17b41c25858c",
+          "width": 928
+        },
+        {
+          "alt": "Wide view of a sunlit ceramics workshop with shared worktables",
+          "height": 848,
+          "path": "/images/events/workshop-ceramic-studio/detail.webp",
+          "role": "detail",
+          "sha256": "8954105bc92ef3c69443ba256fadaf01c5b3d2d18e801af3a70d08996fd47ba0",
+          "width": 1264
+        }
+      ],
+      "key": "workshop-ceramic-studio"
+    },
+    {
+      "category": "workshop",
+      "images": [
+        {
+          "alt": "Participants revealing a botanical print in an urban art workshop",
+          "height": 1152,
+          "path": "/images/events/workshop-botanical-print-lab/cover.webp",
+          "role": "cover",
+          "sha256": "60490a7185283f8a41c1e937992e46d4dc1122a7350786d3de99cd6373c6ac4f",
+          "width": 928
+        },
+        {
+          "alt": "Printmaking tables and drying botanical artworks in a bright studio",
+          "height": 848,
+          "path": "/images/events/workshop-botanical-print-lab/detail.webp",
+          "role": "detail",
+          "sha256": "28ecfb072d070f989a59b7cea252259a562dc3f89f26525e7e61d52bcb06d2f1",
+          "width": 1264
+        }
+      ],
+      "key": "workshop-botanical-print-lab"
+    },
+    {
+      "category": "festival",
+      "images": [
+        {
+          "alt": "Guests sharing food at a long table during a garden festival",
+          "height": 1152,
+          "path": "/images/events/festival-garden-long-table/cover.webp",
+          "role": "cover",
+          "sha256": "c2f3c91daee364c0fff6ea3dfb50699acdd4439634781dde5aba1a766fc7a6c3",
+          "width": 928
+        },
+        {
+          "alt": "Wide view of communal tables and performers across an urban garden festival",
+          "height": 848,
+          "path": "/images/events/festival-garden-long-table/detail.webp",
+          "role": "detail",
+          "sha256": "638b57e2db8a4460393e99862fefb689a3a3e133f34c9f91f84a6d30cb9c87bd",
+          "width": 1264
+        }
+      ],
+      "key": "festival-garden-long-table"
+    },
+    {
+      "category": "festival",
+      "images": [
+        {
+          "alt": "Festival visitors walking beneath handmade lanterns on a neighborhood street",
+          "height": 1152,
+          "path": "/images/events/festival-lantern-street-night/cover.webp",
+          "role": "cover",
+          "sha256": "776b3d13e1decaa5b38798ff7779b304ceab3b1c907c62e4438bdfe327316e70",
+          "width": 928
+        },
+        {
+          "alt": "Wide night view of glowing lanterns and activity along a pedestrian festival street",
+          "height": 848,
+          "path": "/images/events/festival-lantern-street-night/detail.webp",
+          "role": "detail",
+          "sha256": "5811531ce6255d9fb6187e5b7102c569a454f4020ea21599ba86648eab357b9c",
+          "width": 1264
+        }
+      ],
+      "key": "festival-lantern-street-night"
+    },
+    {
+      "category": "sports",
+      "images": [
+        {
+          "alt": "Community runners rounding an athletics track together at dusk",
+          "height": 1152,
+          "path": "/images/events/sports-community-track-evening/cover.webp",
+          "role": "cover",
+          "sha256": "2bd8fe2f729506b51916ce960beb51bf705790f6e8b12f18a8b0e56eae860f2e",
+          "width": 928
+        },
+        {
+          "alt": "Wide view of an inclusive evening running session on a local track",
+          "height": 848,
+          "path": "/images/events/sports-community-track-evening/detail.webp",
+          "role": "detail",
+          "sha256": "9627c02e20f3a007457e46b5b6f37b56195d23368e0b871819cd2052b6611fe6",
+          "width": 1264
+        }
+      ],
+      "key": "sports-community-track-evening"
+    },
+    {
+      "category": "sports",
+      "images": [
+        {
+          "alt": "Climber making a move while friends spot in a bouldering hall",
+          "height": 1152,
+          "path": "/images/events/sports-indoor-climbing-social/cover.webp",
+          "role": "cover",
+          "sha256": "cff4546cd54949a62b4f12160615aa16b255aa625597d00789d9fe2bd4551c3c",
+          "width": 928
+        },
+        {
+          "alt": "Wide view of groups climbing together across an indoor bouldering space",
+          "height": 848,
+          "path": "/images/events/sports-indoor-climbing-social/detail.webp",
+          "role": "detail",
+          "sha256": "1cf728a4e79ac3485691bcea738c2dce47c9d9eb46d7e9cf18e4cbdbf1548c88",
+          "width": 1264
+        }
+      ],
+      "key": "sports-indoor-climbing-social"
+    },
+    {
+      "category": "networking",
+      "images": [
+        {
+          "alt": "Three people talking beside an architectural model in a creative studio",
+          "height": 1152,
+          "path": "/images/events/networking-architecture-studio-social/cover.webp",
+          "role": "cover",
+          "sha256": "7018a336e272c5b2e839b9ab2a63121b0ba46752acf67b4f4a8aa07b62534a04",
+          "width": 928
+        },
+        {
+          "alt": "Small networking groups gathering across an open architecture studio",
+          "height": 848,
+          "path": "/images/events/networking-architecture-studio-social/detail.webp",
+          "role": "detail",
+          "sha256": "c8952e92fe048bea0e410109cef3385f238878fea21f0f1deaeaa3297fa7141f",
+          "width": 1264
+        }
+      ],
+      "key": "networking-architecture-studio-social"
+    },
+    {
+      "category": "networking",
+      "images": [
+        {
+          "alt": "Four people talking over coffee at a courtyard networking breakfast",
+          "height": 1152,
+          "path": "/images/events/networking-courtyard-breakfast/cover.webp",
+          "role": "cover",
+          "sha256": "121d9f68b7f52a670f9918ce8649235cdeb6e82f9cf7d90465ccef469a0fb5a4",
+          "width": 928
+        },
+        {
+          "alt": "Wide morning view of small networking tables in a planted courtyard",
+          "height": 848,
+          "path": "/images/events/networking-courtyard-breakfast/detail.webp",
+          "role": "detail",
+          "sha256": "f3446d981346eebca254dfaae58fe4183aa0727462c0980a0c5b6cc9ab051f8e",
+          "width": 1264
+        }
+      ],
+      "key": "networking-courtyard-breakfast"
+    },
+    {
+      "category": "exhibition",
+      "images": [
+        {
+          "alt": "Visitors viewing a sculptural installation in a converted gallery",
+          "height": 1152,
+          "path": "/images/events/exhibition-adaptive-reuse-opening/cover.webp",
+          "role": "cover",
+          "sha256": "42f7427b0426bf2f04d6f4cb78f79cb509646b83a96e8d828658f479c62d625d",
+          "width": 928
+        },
+        {
+          "alt": "Wide view of a contemporary design exhibition inside an adaptive-reuse space",
+          "height": 848,
+          "path": "/images/events/exhibition-adaptive-reuse-opening/detail.webp",
+          "role": "detail",
+          "sha256": "8eae2cde8b08d2a301f8b376a905074a309872332e5417dab82dcb07ae58c424",
+          "width": 1264
+        }
+      ],
+      "key": "exhibition-adaptive-reuse-opening"
+    },
+    {
+      "category": "exhibition",
+      "images": [
+        {
+          "alt": "Visitors silhouetted beside a luminous form in an immersive exhibition",
+          "height": 1152,
+          "path": "/images/events/exhibition-immersive-light-rooms/cover.webp",
+          "role": "cover",
+          "sha256": "f5a551f7aaa2aabc89986d2d44831b97f5e438bee4eb131977be9cd765bf23e3",
+          "width": 928
+        },
+        {
+          "alt": "Wide view through connected rooms of an abstract light installation",
+          "height": 848,
+          "path": "/images/events/exhibition-immersive-light-rooms/detail.webp",
+          "role": "detail",
+          "sha256": "0cee035d59b7e33a25f0a1f3d4a2e7433e5ee8d8d14e310dc167729c662dfc6c",
+          "width": 1264
+        }
+      ],
+      "key": "exhibition-immersive-light-rooms"
+    }
+  ],
+  "version": 1
+}
