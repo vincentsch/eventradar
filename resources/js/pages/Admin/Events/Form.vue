@@ -8,21 +8,36 @@ import {
     ImagePlus,
     MapPin,
     Save,
-    Search,
     Trash2,
 } from '@lucide/vue';
+import { watchDebounced } from '@vueuse/core';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 interface ExistingImage {
+    token: string;
     role: string;
     path: string;
     width: number;
     height: number;
     alt: string;
 }
+
+type GalleryItem =
+    | {
+          kind: 'existing';
+          token: string;
+          url: string;
+          alt: string;
+      }
+    | {
+          kind: 'new';
+          file: File;
+          url: string;
+          alt: string;
+      };
 
 interface AdminEvent {
     id: string;
@@ -77,7 +92,17 @@ const props = defineProps<{
 const isEditing = computed(() => props.event !== null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const isDragging = ref(false);
-const previews = ref<Array<{ file: File; url: string }>>([]);
+const gallery = ref<GalleryItem[]>(
+    (props.event?.images ?? []).map((image) => ({
+        kind: 'existing',
+        token: image.token,
+        url: image.path,
+        alt: image.alt,
+    })),
+);
+const initialGallerySignature = (props.event?.images ?? [])
+    .map((image) => image.token)
+    .join('|');
 
 const form = useForm({
     title: props.event?.title ?? '',
@@ -105,6 +130,7 @@ const form = useForm({
     currency_code: props.event?.currency_code ?? '',
     capacity: props.event?.capacity?.toString() ?? '',
     images: [] as File[],
+    gallery_order: undefined as string[] | undefined,
 });
 const serverErrors = form.errors as Record<string, string | undefined>;
 const addressResults = ref<AddressSuggestion[]>([]);
@@ -116,16 +142,60 @@ const errorCount = computed(() => Object.keys(form.errors).length);
 const imageError = computed(
     () =>
         form.errors.images ??
-        Object.entries(serverErrors).find(([field]) =>
-            field.startsWith('images.'),
+        Object.entries(serverErrors).find(
+            ([field]) =>
+                field.startsWith('images.') ||
+                field.startsWith('gallery_order'),
         )?.[1],
 );
 const hasOffsetErrors = computed(() =>
     Boolean(form.errors.starts_at_offset || form.errors.ends_at_offset),
 );
+const hasAddressErrors = computed(() =>
+    [
+        'formatted_address',
+        'address_line_1',
+        'postal_code',
+        'locality',
+        'region',
+        'country',
+        'country_code',
+        'latitude',
+        'longitude',
+    ].some((field) => Boolean(serverErrors[field])),
+);
+const galleryChanged = computed(() => {
+    if (!isEditing.value) {
+        return false;
+    }
+
+    const currentExisting = gallery.value
+        .filter(
+            (item): item is Extract<GalleryItem, { kind: 'existing' }> =>
+                item.kind === 'existing',
+        )
+        .map((item) => item.token)
+        .join('|');
+
+    return (
+        gallery.value.some((item) => item.kind === 'new') ||
+        currentExisting !== initialGallerySignature
+    );
+});
+const suppressNextAddressLookup = ref(false);
 
 async function findAddress() {
-    addressLookup.q = form.formatted_address;
+    const query = form.formatted_address.trim();
+
+    if (query.length < 3) {
+        addressResults.value = [];
+
+        return;
+    }
+
+    addressLookup.cancel();
+    addressLookup.clearErrors('q');
+    addressLookup.q = query;
 
     try {
         await addressLookup.get('/admin/address-search');
@@ -136,6 +206,7 @@ async function findAddress() {
 }
 
 function applyAddress(address: AddressSuggestion) {
+    suppressNextAddressLookup.value = true;
     form.formatted_address = address.formatted_address;
     form.address_line_1 = address.address_line_1 ?? '';
     form.postal_code = address.postal_code ?? '';
@@ -148,21 +219,51 @@ function applyAddress(address: AddressSuggestion) {
     addressResults.value = [];
 }
 
+watchDebounced(
+    () => form.formatted_address,
+    () => {
+        if (suppressNextAddressLookup.value) {
+            suppressNextAddressLookup.value = false;
+
+            return;
+        }
+
+        void findAddress();
+    },
+    { debounce: 450 },
+);
+
+function syncUploads() {
+    form.images = gallery.value
+        .filter(
+            (item): item is Extract<GalleryItem, { kind: 'new' }> =>
+                item.kind === 'new',
+        )
+        .map((item) => item.file);
+}
+
 function selectFiles(files: File[]) {
+    const availableSlots = Math.max(0, 8 - gallery.value.length);
     const accepted = files
         .filter((file) => file.type.startsWith('image/'))
-        .slice(0, 8);
+        .slice(0, availableSlots);
 
-    previews.value.forEach((preview) => URL.revokeObjectURL(preview.url));
-    previews.value = accepted.map((file) => ({
-        file,
-        url: URL.createObjectURL(file),
-    }));
-    form.images = accepted;
+    gallery.value.push(
+        ...accepted.map((file) => ({
+            kind: 'new' as const,
+            file,
+            url: URL.createObjectURL(file),
+            alt: file.name,
+        })),
+    );
+    syncUploads();
+    form.clearErrors('images', 'gallery_order');
 }
 
 function handleInput(event: Event) {
-    selectFiles(Array.from((event.target as HTMLInputElement).files ?? []));
+    const input = event.target as HTMLInputElement;
+    selectFiles(Array.from(input.files ?? []));
+    input.value = '';
 }
 
 function handleDrop(event: DragEvent) {
@@ -173,29 +274,44 @@ function handleDrop(event: DragEvent) {
 function moveImage(index: number, direction: -1 | 1) {
     const next = index + direction;
 
-    if (next < 0 || next >= previews.value.length) {
+    if (next < 0 || next >= gallery.value.length) {
         return;
     }
 
-    const items = [...previews.value];
+    const items = [...gallery.value];
     [items[index], items[next]] = [items[next], items[index]];
-    previews.value = items;
-    form.images = items.map((item) => item.file);
+    gallery.value = items;
+    syncUploads();
 }
 
 function removeImage(index: number) {
-    const items = [...previews.value];
+    const items = [...gallery.value];
     const [removed] = items.splice(index, 1);
 
-    if (removed) {
+    if (removed?.kind === 'new') {
         URL.revokeObjectURL(removed.url);
     }
 
-    previews.value = items;
-    form.images = items.map((item) => item.file);
+    gallery.value = items;
+    syncUploads();
 }
 
 function submit() {
+    if (gallery.value.length < 2) {
+        form.setError('images', 'Add at least two images to the gallery.');
+
+        return;
+    }
+
+    if (isEditing.value && galleryChanged.value) {
+        let newIndex = 0;
+        form.gallery_order = gallery.value.map((item) =>
+            item.kind === 'existing' ? item.token : `new:${newIndex++}`,
+        );
+    } else {
+        form.gallery_order = undefined;
+    }
+
     form.transform((data) => ({
         ...data,
         tags: data.tags_text
@@ -211,7 +327,11 @@ function submit() {
 }
 
 onBeforeUnmount(() => {
-    previews.value.forEach((preview) => URL.revokeObjectURL(preview.url));
+    gallery.value.forEach((item) => {
+        if (item.kind === 'new') {
+            URL.revokeObjectURL(item.url);
+        }
+    });
 });
 
 const sectionClasses = 'rounded-xl border bg-card p-5 sm:p-6';
@@ -319,20 +439,19 @@ const selectClasses =
                     </div>
                     <div class="mt-5 grid gap-4 md:grid-cols-2">
                         <label class="space-y-1.5 md:col-span-2">
-                            <span class="text-sm font-medium">
-                                IANA timezone
-                            </span>
-                            <Input
+                            <span class="text-sm font-medium">Timezone</span>
+                            <select
                                 v-model="form.timezone"
-                                list="event-timezones"
-                            />
-                            <datalist id="event-timezones">
+                                :class="selectClasses"
+                            >
                                 <option
                                     v-for="timezone in options.timezones"
                                     :key="timezone"
                                     :value="timezone"
-                                />
-                            </datalist>
+                                >
+                                    {{ timezone }}
+                                </option>
+                            </select>
                             <InputError :message="form.errors.timezone" />
                         </label>
                         <label class="space-y-1.5">
@@ -357,16 +476,18 @@ const selectClasses =
                             />
                             <InputError :message="form.errors.ends_at_local" />
                         </label>
-                        <details class="md:col-span-2" :open="hasOffsetErrors">
-                            <summary
-                                class="cursor-pointer rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                            >
-                                Ambiguous local time? Set explicit UTC offsets
-                            </summary>
-                            <p class="mt-2 text-xs text-muted-foreground">
-                                Daylight-saving gaps are rejected. If a local
-                                time occurs twice, the form will tell you which
-                                UTC offsets are valid.
+                        <div
+                            v-if="hasOffsetErrors"
+                            class="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 md:col-span-2"
+                        >
+                            <p class="text-sm font-medium">
+                                Choose which occurrence of this local time you
+                                mean.
+                            </p>
+                            <p class="mt-1 text-xs text-muted-foreground">
+                                The clock shows this time twice because daylight
+                                saving time ends on this date. Use one of the
+                                offsets listed in the validation message.
                             </p>
                             <div class="mt-3 grid gap-4 md:grid-cols-2">
                                 <label class="space-y-1.5">
@@ -394,7 +515,7 @@ const selectClasses =
                                     />
                                 </label>
                             </div>
-                        </details>
+                        </div>
                     </div>
                 </section>
 
@@ -408,50 +529,44 @@ const selectClasses =
                         </div>
                     </div>
                     <p class="mt-2 text-sm text-muted-foreground">
-                        Search once to fill every field below; the formatted
-                        address is shown publicly and the coordinates power the
-                        map.
+                        Start typing and choose a suggestion. The address,
+                        coordinates, and map location are filled automatically.
                     </p>
                     <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <div class="space-y-1.5 md:col-span-2 lg:col-span-4">
-                            <span class="text-sm font-medium">
-                                Formatted address
-                            </span>
-                            <div class="flex gap-2">
-                                <Input
-                                    v-model="form.formatted_address"
-                                    placeholder="Alexanderplatz 1, 10178 Berlin, Germany"
-                                    @keydown.enter.prevent="findAddress"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    :disabled="
-                                        addressLookup.processing ||
-                                        form.formatted_address.length < 3
-                                    "
-                                    @click="findAddress"
-                                >
-                                    <Search class="size-4" />
-                                    {{
-                                        addressLookup.processing
-                                            ? 'Finding...'
-                                            : 'Find'
-                                    }}
-                                </Button>
-                            </div>
+                        <div
+                            class="relative space-y-1.5 md:col-span-2 lg:col-span-4"
+                        >
+                            <span class="text-sm font-medium">Address</span>
+                            <Input
+                                v-model="form.formatted_address"
+                                role="combobox"
+                                aria-label="Address"
+                                autocomplete="off"
+                                aria-autocomplete="list"
+                                :aria-expanded="addressResults.length > 0"
+                                placeholder="Start typing a street address"
+                            />
+                            <p class="text-xs text-muted-foreground">
+                                {{
+                                    addressLookup.processing
+                                        ? 'Finding addresses...'
+                                        : 'Suggestions appear after three characters.'
+                                }}
+                            </p>
                             <InputError
                                 :message="form.errors.formatted_address"
                             />
                             <InputError :message="addressLookup.errors.q" />
                             <div
                                 v-if="addressResults.length"
-                                class="divide-y overflow-hidden rounded-lg border"
+                                class="absolute z-20 mt-1 w-full divide-y overflow-hidden rounded-lg border bg-popover shadow-lg"
+                                role="listbox"
                             >
                                 <button
                                     v-for="address in addressResults"
                                     :key="`${address.latitude}:${address.longitude}`"
                                     type="button"
+                                    role="option"
                                     class="flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                                     @click="applyAddress(address)"
                                 >
@@ -463,62 +578,100 @@ const selectClasses =
                                 </button>
                             </div>
                         </div>
-                        <label class="space-y-1.5 md:col-span-2">
-                            <span class="text-sm font-medium">
-                                Street address
-                            </span>
-                            <Input v-model="form.address_line_1" />
-                            <InputError :message="form.errors.address_line_1" />
-                        </label>
-                        <label class="space-y-1.5">
-                            <span class="text-sm font-medium">Postal code</span>
-                            <Input v-model="form.postal_code" />
-                            <InputError :message="form.errors.postal_code" />
-                        </label>
-                        <label class="space-y-1.5">
-                            <span class="text-sm font-medium">
-                                City / locality
-                            </span>
-                            <Input v-model="form.locality" />
-                            <InputError :message="form.errors.locality" />
-                        </label>
-                        <label class="space-y-1.5">
-                            <span class="text-sm font-medium">Region</span>
-                            <Input v-model="form.region" />
-                            <InputError :message="form.errors.region" />
-                        </label>
-                        <label class="space-y-1.5">
-                            <span class="text-sm font-medium">Country</span>
-                            <Input v-model="form.country" />
-                            <InputError :message="form.errors.country" />
-                        </label>
-                        <label class="space-y-1.5">
-                            <span class="text-sm font-medium">
-                                Country code
-                            </span>
-                            <Input
-                                v-model="form.country_code"
-                                maxlength="2"
-                                placeholder="DE"
-                            />
-                            <InputError :message="form.errors.country_code" />
-                        </label>
-                        <label class="space-y-1.5">
-                            <span class="text-sm font-medium">Latitude</span>
-                            <Input
-                                v-model="form.latitude"
-                                inputmode="decimal"
-                            />
-                            <InputError :message="form.errors.latitude" />
-                        </label>
-                        <label class="space-y-1.5">
-                            <span class="text-sm font-medium">Longitude</span>
-                            <Input
-                                v-model="form.longitude"
-                                inputmode="decimal"
-                            />
-                            <InputError :message="form.errors.longitude" />
-                        </label>
+                        <details
+                            class="md:col-span-2 lg:col-span-4"
+                            :open="hasAddressErrors"
+                        >
+                            <summary
+                                class="cursor-pointer rounded-sm text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                            >
+                                Edit address details manually
+                            </summary>
+                            <div
+                                class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+                            >
+                                <label class="space-y-1.5 md:col-span-2">
+                                    <span class="text-sm font-medium">
+                                        Street address
+                                    </span>
+                                    <Input v-model="form.address_line_1" />
+                                    <InputError
+                                        :message="form.errors.address_line_1"
+                                    />
+                                </label>
+                                <label class="space-y-1.5">
+                                    <span class="text-sm font-medium">
+                                        Postal code
+                                    </span>
+                                    <Input v-model="form.postal_code" />
+                                    <InputError
+                                        :message="form.errors.postal_code"
+                                    />
+                                </label>
+                                <label class="space-y-1.5">
+                                    <span class="text-sm font-medium">
+                                        City / locality
+                                    </span>
+                                    <Input v-model="form.locality" />
+                                    <InputError
+                                        :message="form.errors.locality"
+                                    />
+                                </label>
+                                <label class="space-y-1.5">
+                                    <span class="text-sm font-medium"
+                                        >Region</span
+                                    >
+                                    <Input v-model="form.region" />
+                                    <InputError :message="form.errors.region" />
+                                </label>
+                                <label class="space-y-1.5">
+                                    <span class="text-sm font-medium"
+                                        >Country</span
+                                    >
+                                    <Input v-model="form.country" />
+                                    <InputError
+                                        :message="form.errors.country"
+                                    />
+                                </label>
+                                <label class="space-y-1.5">
+                                    <span class="text-sm font-medium">
+                                        Country code
+                                    </span>
+                                    <Input
+                                        v-model="form.country_code"
+                                        maxlength="2"
+                                        placeholder="DE"
+                                    />
+                                    <InputError
+                                        :message="form.errors.country_code"
+                                    />
+                                </label>
+                                <label class="space-y-1.5">
+                                    <span class="text-sm font-medium"
+                                        >Latitude</span
+                                    >
+                                    <Input
+                                        v-model="form.latitude"
+                                        inputmode="decimal"
+                                    />
+                                    <InputError
+                                        :message="form.errors.latitude"
+                                    />
+                                </label>
+                                <label class="space-y-1.5">
+                                    <span class="text-sm font-medium">
+                                        Longitude
+                                    </span>
+                                    <Input
+                                        v-model="form.longitude"
+                                        inputmode="decimal"
+                                    />
+                                    <InputError
+                                        :message="form.errors.longitude"
+                                    />
+                                </label>
+                            </div>
+                        </details>
                     </div>
                 </section>
 
@@ -570,17 +723,21 @@ const selectClasses =
                     <InputError :message="imageError" class="mt-2" />
 
                     <div
-                        v-if="previews.length"
+                        v-if="gallery.length"
                         class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
                     >
                         <figure
-                            v-for="(preview, index) in previews"
-                            :key="preview.url"
+                            v-for="(image, index) in gallery"
+                            :key="
+                                image.kind === 'existing'
+                                    ? image.token
+                                    : image.url
+                            "
                             class="overflow-hidden rounded-lg border bg-background"
                         >
                             <img
-                                :src="preview.url"
-                                alt="Selected event image preview"
+                                :src="image.url"
+                                :alt="image.alt"
                                 class="aspect-[4/3] w-full object-cover"
                             />
                             <figcaption class="flex items-center gap-1 p-2">
@@ -607,7 +764,7 @@ const selectClasses =
                                     type="button"
                                     size="icon"
                                     variant="ghost"
-                                    :disabled="index === previews.length - 1"
+                                    :disabled="index === gallery.length - 1"
                                     :aria-label="`Move image ${index + 1} later`"
                                     @click="moveImage(index, 1)"
                                 >
@@ -624,26 +781,6 @@ const selectClasses =
                                 </Button>
                             </figcaption>
                         </figure>
-                    </div>
-
-                    <div v-else-if="event?.images.length" class="mt-4">
-                        <p class="mb-3 text-sm font-medium">Current gallery</p>
-                        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            <figure
-                                v-for="image in event.images"
-                                :key="image.path"
-                                class="overflow-hidden rounded-lg border"
-                            >
-                                <img
-                                    :src="image.path"
-                                    :alt="image.alt"
-                                    class="aspect-[4/3] w-full object-cover"
-                                />
-                            </figure>
-                        </div>
-                        <p class="mt-3 text-xs text-muted-foreground">
-                            Selecting new files replaces the complete gallery.
-                        </p>
                     </div>
                 </section>
 

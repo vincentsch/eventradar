@@ -3,6 +3,7 @@
 namespace App\Services\Events;
 
 use App\Models\Event;
+use App\Models\EventMedia;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -20,7 +21,7 @@ final class EventMediaManager
 
     private const MAX_PIXELS = 40_000_000;
 
-    /** @param list<UploadedFile> $files */
+    /** @param list<UploadedFile|EventMedia> $files */
     public function prepare(Event $event, array $files): PreparedEventMedia
     {
         if (count($files) < 2 || count($files) > 8) {
@@ -32,7 +33,9 @@ final class EventMediaManager
 
         try {
             foreach ($files as $position => $file) {
-                $rows[] = $this->process($event, $file, $position, $newPaths);
+                $rows[] = $file instanceof EventMedia
+                    ? $this->retain($file, $position)
+                    : $this->process($event, $file, $position, $newPaths);
             }
         } catch (Throwable $exception) {
             Storage::disk(self::DISK)->delete($newPaths);
@@ -46,9 +49,13 @@ final class EventMediaManager
     /** @return list<string> Paths that are safe to delete after the transaction commits. */
     public function replace(Event $event, PreparedEventMedia $prepared): array
     {
+        $retainedPaths = collect($prepared->rows)
+            ->flatMap(fn (array $row): array => [$row['path'], $row['card_path']])
+            ->flip();
         $oldPaths = array_values($event->media()
             ->get(['path', 'card_path'])
             ->flatMap(fn ($media): array => [$media->path, $media->card_path])
+            ->reject(fn (string $path): bool => $retainedPaths->has($path))
             ->all());
 
         try {
@@ -74,6 +81,25 @@ final class EventMediaManager
     public function discard(PreparedEventMedia $prepared): void
     {
         Storage::disk(self::DISK)->delete($prepared->paths);
+    }
+
+    /** @return array<string, int|string> */
+    private function retain(EventMedia $media, int $position): array
+    {
+        return [
+            'disk' => $media->disk,
+            'path' => $media->path,
+            'card_path' => $media->card_path,
+            'position' => $position,
+            'width' => $media->width,
+            'height' => $media->height,
+            'card_width' => $media->card_width,
+            'card_height' => $media->card_height,
+            'mime_type' => $media->mime_type,
+            'byte_size' => $media->byte_size,
+            'sha256' => $media->sha256,
+            'alt' => $media->alt,
+        ];
     }
 
     /**

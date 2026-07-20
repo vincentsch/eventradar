@@ -2,7 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Plus, X } from '@lucide/vue';
 import { watchDebounced } from '@vueuse/core';
-import { reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import AdminDateRangePicker from '@/components/admin/AdminDateRangePicker.vue';
 import IndexPagination from '@/components/admin/IndexPagination.vue';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +62,7 @@ const form = reactive({
     from: props.filters.from ?? '',
     to: props.filters.to ?? '',
 });
+const hasFilters = computed(() => Object.values(form).some(Boolean));
 
 function applyFilters() {
     const query = Object.fromEntries(
@@ -231,10 +232,10 @@ const formatStart = (event: EventRow) =>
                     @change="onDateRange"
                 />
             </div>
-            <div class="flex items-center justify-between gap-3 lg:col-span-4">
-                <p class="text-xs text-muted-foreground">
-                    Filters apply automatically.
-                </p>
+            <div
+                v-if="hasFilters"
+                class="flex items-center justify-end lg:col-span-4"
+            >
                 <Button
                     type="button"
                     variant="outline"

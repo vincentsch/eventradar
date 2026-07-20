@@ -29,7 +29,15 @@ class SaveEventRequest extends FormRequest
     /** @return array<string, list<mixed>> */
     public function rules(): array
     {
-        $images = $this->routeIs('admin.events.store') ? ['required'] : ['sometimes'];
+        $creating = $this->routeIs('admin.events.store');
+        $galleryOrder = $this->input('gallery_order');
+        $reorderingGallery = is_array($galleryOrder) && $galleryOrder !== [];
+        $images = $creating ? ['required'] : ['sometimes'];
+
+        if ($creating || ! $reorderingGallery) {
+            $images[] = 'min:2';
+        }
+
         $coordinatesRequired = Rule::requiredIf(
             fn (): bool => in_array($this->input('status'), EventStatus::publicValues(), true),
         );
@@ -60,8 +68,10 @@ class SaveEventRequest extends FormRequest
             'minimum_price' => ['nullable', 'numeric', 'min:0', 'max:9999999999.99', 'required_with:currency_code'],
             'currency_code' => ['nullable', 'string', 'size:3', 'alpha:ascii', 'required_with:minimum_price'],
             'capacity' => ['nullable', 'integer', 'min:1', 'max:4294967295'],
-            'images' => [...$images, 'array', 'min:2', 'max:8'],
+            'images' => [...$images, 'array', 'max:8'],
             'images.*' => ['image', 'mimes:jpg,jpeg,png,webp,gif,avif', 'max:12288', 'dimensions:max_width=20000,max_height=20000'],
+            'gallery_order' => ['sometimes', 'nullable', 'array', 'min:2', 'max:8'],
+            'gallery_order.*' => ['required', 'string', 'distinct', 'regex:/^(?:(?:media|catalogue):\d+|new:\d+)$/'],
         ];
     }
 }

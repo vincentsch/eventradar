@@ -184,14 +184,18 @@ class EventController extends Controller
         EventMediaManager $media,
         PublicEventFilterOptions $filters,
     ): RedirectResponse {
-        $record = Event::query()->select(self::EDIT_COLUMNS)->findOrFail($event);
+        $record = Event::query()
+            ->select(self::EDIT_COLUMNS)
+            ->with(['media', 'imageSet.images'])
+            ->findOrFail($event);
         $originalStart = $record->starts_at->getTimestamp();
         $originalStatus = $record->status;
         $record->fill($this->attributes($request, $dates));
         $scheduleChanged = $record->starts_at->getTimestamp() !== $originalStart;
         $visibilityChanged = $record->status !== $originalStatus;
-        $prepared = $request->hasFile('images')
-            ? $media->prepare($record, $this->uploadedImages($request))
+        $galleryFiles = $this->galleryFiles($record, $request);
+        $prepared = $galleryFiles !== null
+            ? $media->prepare($record, $galleryFiles)
             : null;
         $oldPaths = [];
 
@@ -498,6 +502,7 @@ class EventController extends Controller
     {
         if ($event->media->isNotEmpty()) {
             return array_values($event->media->map(fn (EventMedia $image): array => [
+                'token' => 'media:'.$image->id,
                 'role' => $image->position === 0 ? 'cover' : 'gallery',
                 'path' => $image->url(),
                 'width' => $image->width,
@@ -511,6 +516,7 @@ class EventController extends Controller
         }
 
         return array_values($event->imageSet->images->map(fn (EventImage $image): array => [
+            'token' => 'catalogue:'.$image->id,
             'role' => $image->role->value,
             'path' => $image->path,
             'width' => $image->width,
@@ -548,5 +554,85 @@ class EventController extends Controller
         }
 
         return array_values($files);
+    }
+
+    /**
+     * Builds the requested gallery from images already attached to this event
+     * and newly uploaded files. Existing files are accepted only through
+     * opaque tokens emitted by the edit endpoint, so another event's media
+     * cannot be copied by changing form data in the browser.
+     *
+     * @return list<UploadedFile|EventMedia>|null
+     */
+    private function galleryFiles(Event $event, SaveEventRequest $request): ?array
+    {
+        $validated = $request->validated();
+        $order = $validated['gallery_order'] ?? [];
+
+        if ($order === []) {
+            return $request->hasFile('images') ? $this->uploadedImages($request) : null;
+        }
+
+        $existing = [];
+        foreach ($event->media as $image) {
+            if (! Storage::disk($image->disk)->exists($image->path)
+                || ! Storage::disk($image->disk)->exists($image->card_path)
+            ) {
+                continue;
+            }
+
+            $existing['media:'.$image->id] = $image;
+        }
+
+        if ($event->media->isEmpty() && $event->imageSet !== null) {
+            foreach ($event->imageSet->images as $image) {
+                $path = public_path(ltrim($image->path, '/'));
+                if (is_file($path)) {
+                    $existing['catalogue:'.$image->id] = new UploadedFile(
+                        $path,
+                        basename($path),
+                        'image/webp',
+                        null,
+                        true,
+                    );
+                }
+            }
+        }
+
+        $uploads = $this->uploadedImages($request);
+        $usedUploads = [];
+        $files = [];
+
+        foreach ($order as $token) {
+            if (str_starts_with($token, 'new:')) {
+                $index = (int) Str::after($token, 'new:');
+                if (! isset($uploads[$index])) {
+                    throw ValidationException::withMessages([
+                        'images' => 'The selected gallery could not be matched to the uploaded files.',
+                    ]);
+                }
+
+                $files[] = $uploads[$index];
+                $usedUploads[$index] = true;
+
+                continue;
+            }
+
+            if (! isset($existing[$token])) {
+                throw ValidationException::withMessages([
+                    'images' => 'One of the selected gallery images no longer belongs to this event.',
+                ]);
+            }
+
+            $files[] = $existing[$token];
+        }
+
+        if (count($usedUploads) !== count($uploads)) {
+            throw ValidationException::withMessages([
+                'images' => 'Every uploaded image must appear in the gallery.',
+            ]);
+        }
+
+        return $files;
     }
 }

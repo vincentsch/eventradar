@@ -15,10 +15,22 @@ final class MapboxGeocoder
     {
         return $this->request('forward', [
             'q' => $query,
-            'autocomplete' => 'false',
+            'autocomplete' => 'true',
             'types' => 'address,street,place',
             'limit' => 5,
         ]);
+    }
+
+    /**
+     * @return array{formatted_address: string, address_line_1: ?string, postal_code: ?string, locality: string, region: ?string, country: string, country_code: string, latitude: ?float, longitude: ?float}|null
+     */
+    public function reverse(float $latitude, float $longitude): ?array
+    {
+        return $this->request('reverse', [
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'types' => 'address,street,place',
+        ])[0] ?? null;
     }
 
     /**

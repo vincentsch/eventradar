@@ -28,6 +28,8 @@ it('creates an event from local time with an optimized local gallery', function 
             UploadedFile::fake()->image('cover.jpg', 1600, 1000),
             UploadedFile::fake()->image('detail.png', 1200, 900),
         ],
+        // Multipart forms serialize an unchanged optional array as null.
+        'gallery_order' => null,
     ]))->assertRedirect();
 
     $event = Event::query()->where('title', 'Admin-created summer meetup')->firstOrFail();
@@ -78,6 +80,57 @@ it('atomically replaces a managed event gallery and removes the old files', func
     foreach ($newMedia as $image) {
         Storage::disk('public')->assertExists([$image->path, $image->card_path]);
     }
+});
+
+it('appends a later upload to the existing edit gallery', function () {
+    Storage::fake('public');
+    Queue::fake();
+
+    $this->post('/admin/events', validEventInput([
+        'images' => [
+            UploadedFile::fake()->image('cover.jpg'),
+            UploadedFile::fake()->image('detail.jpg'),
+        ],
+    ]))->assertRedirect();
+
+    $event = Event::query()->where('title', 'Admin-created summer meetup')->firstOrFail();
+    $retained = $event->media->map(fn ($image): array => [
+        'path' => $image->path,
+        'card_path' => $image->card_path,
+        'sha256' => $image->sha256,
+    ])->all();
+    $tokens = $event->media->map(fn ($image): string => 'media:'.$image->id)->all();
+
+    $this->put("/admin/events/{$event->id}", validEventInput([
+        'images' => [UploadedFile::fake()->image('later.jpg')],
+        'gallery_order' => [...$tokens, 'new:0'],
+    ]))->assertRedirect("/admin/events/{$event->id}");
+
+    $updated = $event->refresh()->media;
+    expect($updated)->toHaveCount(3)
+        ->and($updated->pluck('position')->all())->toBe([0, 1, 2])
+        ->and($updated->take(2)->map(fn ($image): array => [
+            'path' => $image->path,
+            'card_path' => $image->card_path,
+            'sha256' => $image->sha256,
+        ])->all())->toBe($retained);
+});
+
+it('rejects gallery tokens that do not belong to the edited event', function () {
+    Storage::fake('public');
+    $event = Event::factory()->create(['image_set_key' => 'meetup-neighborhood-makers-table']);
+    $other = Event::factory()->create(['image_set_key' => 'concert-industrial-after-dark']);
+    $eventToken = 'catalogue:'.$event->imageSet->images->first()->id;
+    $otherToken = 'catalogue:'.$other->imageSet->images->first()->id;
+
+    $this->from("/admin/events/{$event->id}/edit")
+        ->put("/admin/events/{$event->id}", validEventInput([
+            'gallery_order' => [$eventToken, $otherToken],
+        ]))
+        ->assertRedirect("/admin/events/{$event->id}/edit")
+        ->assertSessionHasErrors('images');
+
+    expect($event->refresh()->media)->toHaveCount(0);
 });
 
 it('moves attendance rescheduling out of the admin request', function () {
@@ -229,17 +282,19 @@ it('keeps permanent Mapbox geocoding behind the admin boundary', function () {
 
     Http::assertSent(fn ($request) => $request['permanent'] === 'true'
         && $request['access_token'] === 'secret-server-token'
-        && $request['autocomplete'] === 'false');
+        && $request['autocomplete'] === 'true');
 });
 
 it('turns a Mapbox outage into a recoverable manual-entry error', function () {
     config()->set('services.mapbox.geocoding_token', 'secret-server-token');
     Http::fake(['api.mapbox.com/*' => Http::response([], 503)]);
 
-    $this->from('/admin/events/create')
-        ->get('/admin/address-search?q=Alexanderplatz%201')
-        ->assertRedirect('/admin/events/create')
-        ->assertSessionHasErrors('q');
+    $this->getJson('/admin/address-search?q=Alexanderplatz%201')
+        ->assertUnprocessable()
+        ->assertJsonPath(
+            'errors.q',
+            'Address lookup is temporarily unavailable. Try again or open the manual fields.',
+        );
 });
 
 /** @param array<string, mixed> $overrides */

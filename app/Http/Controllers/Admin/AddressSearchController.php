@@ -7,7 +7,6 @@ use App\Services\Events\MapboxGeocoder;
 use Illuminate\Http\Client\HttpClientException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class AddressSearchController extends Controller
@@ -19,16 +18,20 @@ class AddressSearchController extends Controller
         ]);
         try {
             $results = $geocoder->forward($validated['q']);
-        } catch (RuntimeException) {
-            throw ValidationException::withMessages([
-                'q' => 'Address lookup is not configured. Enter the address and coordinates manually.',
-            ]);
         } catch (HttpClientException $exception) {
             report($exception);
 
-            throw ValidationException::withMessages([
-                'q' => 'Address lookup is temporarily unavailable. Enter the address and coordinates manually.',
-            ]);
+            return response()->json([
+                'errors' => [
+                    'q' => 'Address lookup is temporarily unavailable. Try again or open the manual fields.',
+                ],
+            ], 422);
+        } catch (RuntimeException) {
+            return response()->json([
+                'errors' => [
+                    'q' => 'Address lookup is not configured. Open the manual fields to enter the location.',
+                ],
+            ], 422);
         }
 
         return response()->json(['results' => $results]);

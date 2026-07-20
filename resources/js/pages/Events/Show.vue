@@ -12,6 +12,7 @@ import {
     Users,
 } from '@lucide/vue';
 import { computed, ref } from 'vue';
+import EventLocationReveal from '@/components/public/EventLocationReveal.vue';
 import ImageLightbox from '@/components/public/ImageLightbox.vue';
 import type { Auth } from '@/types';
 
@@ -235,6 +236,12 @@ const galleryItemClasses = (index: number) =>
                     >
                         {{ location }}
                     </dd>
+                    <EventLocationReveal
+                        v-if="
+                            event.latitude !== null && event.longitude !== null
+                        "
+                        :event-id="event.id"
+                    />
                 </div>
             </div>
             <div class="flex gap-3.5">

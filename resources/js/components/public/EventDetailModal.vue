@@ -20,6 +20,7 @@ import {
     DialogTitle,
 } from 'reka-ui';
 import { computed, nextTick, ref, watch } from 'vue';
+import EventLocationReveal from '@/components/public/EventLocationReveal.vue';
 import {
     eventCategoryLabel,
     eventWeekday,
@@ -310,6 +311,14 @@ const galleryButtonClasses =
                                         {{ event.locationLabel }}
                                     </span>
                                 </p>
+                                <EventLocationReveal
+                                    v-if="
+                                        event.latitude !== null &&
+                                        event.longitude !== null
+                                    "
+                                    :key="event.id"
+                                    :event-id="event.id"
+                                />
                             </div>
                             <DialogDescription
                                 class="mt-4 text-sm leading-relaxed text-stone-600 sm:text-base"
