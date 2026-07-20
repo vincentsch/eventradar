@@ -3,7 +3,6 @@ import {
     CalendarDays,
     CalendarRange,
     ChevronDown,
-    LoaderCircle,
     MapPin,
     Search,
     SlidersHorizontal,
@@ -14,6 +13,7 @@ import { ref } from 'vue';
 import EventDateRangePicker from '@/components/public/EventDateRangePicker.vue';
 import FilterSelect from '@/components/public/FilterSelect.vue';
 import { customDateValue } from '@/components/public/publicEventDisplay';
+import { useAutoApplyingEventFilters } from '@/components/public/useAutoApplyingEventFilters';
 import { usePublicEventFilters } from '@/components/public/usePublicEventFilters';
 import type {
     PublicEventFilterOptions,
@@ -59,10 +59,26 @@ function applyFilters() {
     emit('apply', parameters());
 }
 
+const { applyNow, resetWithoutApplying } = useAutoApplyingEventFilters({
+    searchTerm,
+    locationChoice,
+    categoryChoice,
+    dateChoice,
+    dateRange,
+    parameters,
+    apply: applyFilters,
+});
+
+function resetFilters() {
+    resetWithoutApplying(reset);
+}
+
 function clearFilters() {
-    reset();
+    resetFilters();
     emit('clear');
 }
+
+defineExpose({ resetFilters });
 </script>
 
 <template>
@@ -71,8 +87,11 @@ function clearFilters() {
         aria-label="Search and filter events"
         class="rounded-2xl border border-stone-900/10 bg-[#fffdf8] p-2 shadow-lg shadow-stone-900/5"
         :aria-busy="processing"
-        @submit.prevent="applyFilters"
+        @submit.prevent="applyNow"
     >
+        <p role="status" aria-live="polite" class="sr-only">
+            {{ processing ? 'Updating results' : '' }}
+        </p>
         <div
             class="grid gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]"
         >
@@ -186,8 +205,15 @@ function clearFilters() {
         </div>
 
         <div
+            v-if="hasFilters || processing"
             class="mt-2 flex flex-wrap items-center justify-end gap-2 border-t border-stone-900/10 px-1 pt-2"
         >
+            <p
+                v-if="processing"
+                class="mr-auto text-xs font-semibold text-stone-500"
+            >
+                Updating results…
+            </p>
             <button
                 v-if="hasFilters"
                 type="button"
@@ -195,18 +221,6 @@ function clearFilters() {
                 @click="clearFilters"
             >
                 Clear filters
-            </button>
-            <button
-                type="submit"
-                :disabled="processing"
-                class="inline-flex h-10 items-center gap-2 rounded-full bg-stone-900 px-5 text-xs font-bold text-white transition-colors hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60"
-            >
-                <LoaderCircle
-                    v-if="processing"
-                    class="size-3.5 animate-spin motion-reduce:animate-none"
-                    aria-hidden="true"
-                />
-                {{ processing ? 'Finding events' : 'Apply filters' }}
             </button>
         </div>
     </form>

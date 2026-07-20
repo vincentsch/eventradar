@@ -51,4 +51,12 @@ final class PublicEventFeed
             currentCursor: $encodedCursor ?? 1,
         );
     }
+
+    public function count(CarbonImmutable $instant): int
+    {
+        $query = Event::query();
+        $this->visibility->apply($query, $instant, useCursorAccessPath: true);
+
+        return $query->count();
+    }
 }

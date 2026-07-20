@@ -74,6 +74,8 @@ test('discovery filters, pagination, details, and map work with live data', asyn
 
     const cards = page.locator('[data-event-card]');
     await expect(cards).toHaveCount(18);
+    await expect(page.getByText(/Showing 18 of [\d,]+ events/)).toBeVisible();
+    await expect(page.getByText(/loaded places/)).toHaveCount(0);
 
     await cards.first().getByRole('button').click();
     await expect(
@@ -86,6 +88,32 @@ test('discovery filters, pagination, details, and map work with live data', asyn
     await page.getByRole('button', { name: 'Load more events' }).click();
     await expect(cards).toHaveCount(36);
 
+    const date = page.locator('#discover-date');
+    await date.selectOption('custom');
+    await page
+        .getByRole('group', { name: 'Custom date range' })
+        .getByRole('button', { name: 'Clear' })
+        .click();
+    await page.waitForTimeout(500);
+    await expect(cards).toHaveCount(36);
+
+    await date.selectOption('next-seven-days');
+    await expect(page).toHaveURL(/from=/);
+    await expect(page).toHaveURL(/to=/);
+    await date.selectOption('any');
+    await expect
+        .poll(() => new URL(page.url()).searchParams.get('from'))
+        .toBeNull();
+
+    const search = page.locator('#discover-search');
+    await search.fill('workshop');
+    await expect(page).toHaveURL(/q=workshop/);
+    await expect(search).toBeFocused();
+    await search.fill('');
+    await expect
+        .poll(() => new URL(page.url()).searchParams.get('q'))
+        .toBeNull();
+
     const category = page.locator('#discover-category');
     const selectedType = await category
         .locator('option')
@@ -93,9 +121,10 @@ test('discovery filters, pagination, details, and map work with live data', asyn
         .getAttribute('value');
     expect(selectedType).toBeTruthy();
     await category.selectOption(selectedType!);
-    await page.getByRole('button', { name: 'Apply filters' }).click();
-
     await expect(page).toHaveURL(new RegExp(`type=${selectedType}`));
+    await expect(
+        page.getByRole('button', { name: 'Apply filters' }),
+    ).toHaveCount(0);
     await expect(cards.first()).toBeVisible();
     await expect(cards).toHaveCount(18);
 

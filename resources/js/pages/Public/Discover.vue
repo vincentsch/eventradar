@@ -17,6 +17,8 @@ interface DiscoveryState {
     mode: 'feed' | 'search';
     status: 'ready' | 'unavailable';
     providerCount: number | null;
+    totalCount: number;
+    totalCountIsCapped: boolean;
     hydratedCount: number | null;
     processingTimeMs: number | null;
 }
@@ -29,26 +31,40 @@ const props = defineProps<{
 }>();
 const page = usePage();
 const detailEvent = ref<PublicEvent | null>(null);
+const filterBar = ref<{ resetFilters: () => void } | null>(null);
 const filtering = ref(false);
+let latestFilterVisit = 0;
 const eventRows = computed(() => props.events.data);
 const currentPath = computed(() =>
     page.url.startsWith('/events-visual-1') ? '/events-visual-1' : '/',
 );
 
-const cityCount = computed(
-    () => new Set(eventRows.value.map((event) => event.locationLabel)).size,
+const formattedTotalCount = computed(() =>
+    new Intl.NumberFormat('en-US').format(props.discovery.totalCount),
 );
 
 function applyFilters(parameters: Record<string, string>) {
+    const visit = ++latestFilterVisit;
+
     router.get(currentPath.value, parameters, {
         replace: true,
+        preserveState: true,
         reset: ['events'],
-        onStart: () => (filtering.value = true),
-        onFinish: () => (filtering.value = false),
+        onStart: () => {
+            if (visit === latestFilterVisit) {
+                filtering.value = true;
+            }
+        },
+        onFinish: () => {
+            if (visit === latestFilterVisit) {
+                filtering.value = false;
+            }
+        },
     });
 }
 
 function clearFilters() {
+    filterBar.value?.resetFilters();
     applyFilters({});
 }
 </script>
@@ -91,6 +107,7 @@ function clearFilters() {
         </div>
 
         <EventFilterBar
+            ref="filterBar"
             :query="query"
             :filters="filters"
             :processing="filtering"
@@ -104,19 +121,12 @@ function clearFilters() {
         >
             <p class="text-sm text-stone-600">
                 <strong class="font-bold text-stone-900">
-                    <template v-if="discovery.providerCount !== null">
-                        {{ discovery.providerCount }} events
-                    </template>
-                    <template v-else>
-                        Showing {{ eventRows.length }} events
-                    </template>
+                    Showing {{ eventRows.length }} of {{ formattedTotalCount
+                    }}{{ discovery.totalCountIsCapped ? '+' : '' }}
+                    {{ discovery.mode === 'search' ? 'matching ' : '' }}events
                 </strong>
-                <template v-if="eventRows.length">
-                    across {{ cityCount }} loaded
-                    {{ cityCount === 1 ? 'place' : 'places' }}
-                </template>
                 <span class="text-stone-500">
-                    · times shown are each event's own
+                    · times shown in each event's local time
                 </span>
             </p>
             <ViewNavigation active="grid" />

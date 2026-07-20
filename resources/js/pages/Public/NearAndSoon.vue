@@ -21,6 +21,7 @@ import {
     eventDateParts,
     eventWeekday,
 } from '@/components/public/publicEventDisplay';
+import { useAutoApplyingEventFilters } from '@/components/public/useAutoApplyingEventFilters';
 import { usePublicEventFilters } from '@/components/public/usePublicEventFilters';
 import ViewNavigation from '@/components/public/ViewNavigation.vue';
 import type {
@@ -40,6 +41,7 @@ interface NearAndSoonQuery extends PublicEventQuery {
 interface MapDiscoveryState {
     status: 'ready' | 'unavailable';
     providerCount: number;
+    totalCountIsCapped: boolean;
     hydratedCount: number;
     processingTimeMs: number;
     limit: number;
@@ -55,6 +57,7 @@ const props = defineProps<{
 const selectedId = ref(props.events[0]?.id ?? '');
 const filtersOpen = ref(false);
 const loading = ref(false);
+let latestRequest = 0;
 const currentBounds = ref<MapBounds | null>(boundsFromQuery(props.query));
 const initialBounds = boundsFromQuery(props.query);
 const {
@@ -146,8 +149,8 @@ const agendaDays = computed<AgendaDay[]>(() => {
             };
         });
 });
-const cityCount = computed(
-    () => new Set(props.events.map((event) => event.locationLabel)).size,
+const formattedTotalCount = computed(() =>
+    new Intl.NumberFormat('en-US').format(props.discovery.providerCount),
 );
 
 watch(
@@ -170,8 +173,19 @@ function applyFilters() {
     requestEvents(currentBounds.value, parameters());
 }
 
+const { applyNow, cancelPendingSearch, resetWithoutApplying } =
+    useAutoApplyingEventFilters({
+        searchTerm,
+        locationChoice,
+        categoryChoice,
+        dateChoice,
+        dateRange,
+        parameters,
+        apply: applyFilters,
+    });
+
 function clearFilters() {
-    reset();
+    resetWithoutApplying(reset);
     requestEvents(currentBounds.value, {});
 }
 
@@ -179,6 +193,8 @@ function requestEvents(
     bounds: MapBounds | null,
     filterParameters: Record<string, string> = parameters(),
 ) {
+    cancelPendingSearch();
+    const request = ++latestRequest;
     router.get(
         '/events-visual-2',
         { ...filterParameters, ...(bounds ?? {}) },
@@ -187,8 +203,16 @@ function requestEvents(
             preserveScroll: true,
             preserveState: true,
             replace: true,
-            onStart: () => (loading.value = true),
-            onFinish: () => (loading.value = false),
+            onStart: () => {
+                if (request === latestRequest) {
+                    loading.value = true;
+                }
+            },
+            onFinish: () => {
+                if (request === latestRequest) {
+                    loading.value = false;
+                }
+            },
         },
     );
 }
@@ -232,11 +256,8 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
                 <p
                     class="text-[11px] font-black tracking-widest text-orange-700 uppercase"
                 >
-                    {{ events.length }} shown · {{ cityCount }}
-                    {{ cityCount === 1 ? 'place' : 'places' }}
-                    <template v-if="discovery.providerCount > events.length">
-                        · {{ discovery.providerCount }} matches
-                    </template>
+                    {{ events.length }} of {{ formattedTotalCount
+                    }}{{ discovery.totalCountIsCapped ? '+' : '' }} events shown
                 </p>
                 <div
                     class="mt-1 flex flex-wrap items-end justify-between gap-3"
@@ -257,8 +278,11 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
                     role="search"
                     aria-label="Search map events"
                     :aria-busy="loading"
-                    @submit.prevent="applyFilters"
+                    @submit.prevent="applyNow"
                 >
+                    <p role="status" aria-live="polite" class="sr-only">
+                        {{ loading ? 'Updating map events' : '' }}
+                    </p>
                     <div class="mt-5 flex gap-2">
                         <div class="relative min-w-0 flex-1">
                             <Search
@@ -273,7 +297,12 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
                                 v-model="searchTerm"
                                 type="search"
                                 placeholder="Search this area"
-                                class="h-12 w-full rounded-xl bg-white pr-4 pl-10 text-sm font-medium text-stone-900 shadow-sm ring-1 shadow-stone-900/5 ring-stone-900/10 placeholder:text-stone-500 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                                class="h-12 w-full rounded-xl bg-white pr-10 pl-10 text-sm font-medium text-stone-900 shadow-sm ring-1 shadow-stone-900/5 ring-stone-900/10 placeholder:text-stone-500 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                            />
+                            <LoaderCircle
+                                v-if="loading"
+                                class="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 animate-spin text-stone-500 motion-reduce:animate-none"
+                                aria-hidden="true"
                             />
                         </div>
                         <button
@@ -292,19 +321,6 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
                                 :class="filtersOpen ? 'rotate-180' : ''"
                                 aria-hidden="true"
                             />
-                        </button>
-                        <button
-                            type="submit"
-                            :disabled="loading"
-                            class="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-stone-900 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60"
-                        >
-                            <LoaderCircle
-                                v-if="loading"
-                                class="size-4 animate-spin motion-reduce:animate-none"
-                                aria-hidden="true"
-                            />
-                            <Search v-else class="size-4" aria-hidden="true" />
-                            <span class="hidden sm:inline">Search</span>
                         </button>
                     </div>
 

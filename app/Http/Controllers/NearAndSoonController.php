@@ -37,6 +37,7 @@ class NearAndSoonController extends Controller
             'discovery' => [
                 'status' => $status,
                 'providerCount' => $result['provider_count'],
+                'totalCountIsCapped' => $result['provider_count'] >= (int) config('meilisearch.pagination_max_total_hits'),
                 'hydratedCount' => count($result['events']),
                 'processingTimeMs' => $result['processing_time_ms'],
                 'limit' => PublicEventMapSearch::RESULT_LIMIT,

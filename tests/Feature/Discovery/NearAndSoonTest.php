@@ -67,6 +67,7 @@ it('hydrates bounded map results in provider order with anti-meridian viewport f
             ->where('events.1.id', $first->id)
             ->where('events.1.description', Str::limit($longDescription, 480, '...'))
             ->where('discovery.providerCount', 2)
+            ->where('discovery.totalCountIsCapped', false)
             ->where('discovery.hydratedCount', 2)
             ->where('discovery.limit', 200)
             ->where('query.west', 170)
@@ -95,6 +96,7 @@ it('returns an explicit unavailable state when map discovery fails', function ()
             ->has('events', 0)
             ->where('discovery.status', 'unavailable')
             ->where('discovery.providerCount', 0)
+            ->where('discovery.totalCountIsCapped', false)
             ->where('discovery.hydratedCount', 0)
             ->where('discovery.limit', 200));
 });

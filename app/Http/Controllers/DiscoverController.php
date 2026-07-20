@@ -27,6 +27,8 @@ class DiscoverController extends Controller
             'mode' => $query->hasDiscovery() ? 'search' : 'feed',
             'status' => 'ready',
             'providerCount' => null,
+            'totalCount' => null,
+            'totalCountIsCapped' => false,
             'hydratedCount' => null,
             'processingTimeMs' => null,
         ];
@@ -36,6 +38,8 @@ class DiscoverController extends Controller
                 $result = $search->page($query, $instant, $request->url());
                 $events = $result['paginator'];
                 $discovery['providerCount'] = $result['provider_count'];
+                $discovery['totalCount'] = $result['provider_count'];
+                $discovery['totalCountIsCapped'] = $result['provider_count'] >= (int) config('meilisearch.pagination_max_total_hits');
                 $discovery['hydratedCount'] = $result['hydrated_count'];
                 $discovery['processingTimeMs'] = $result['processing_time_ms'];
             } catch (ExceptionInterface $exception) {
@@ -49,6 +53,7 @@ class DiscoverController extends Controller
                 ]);
                 $discovery['status'] = 'unavailable';
                 $discovery['providerCount'] = 0;
+                $discovery['totalCount'] = 0;
                 $discovery['hydratedCount'] = 0;
             }
         } else {
@@ -60,7 +65,11 @@ class DiscoverController extends Controller
         return Inertia::render('Public/Discover', [
             'events' => Inertia::scroll($events, metadata: $scrollMetadata),
             'query' => $query->canonical(),
-            'discovery' => $discovery,
+            // The exact database count is skipped for partial infinite-scroll
+            // requests, which ask Inertia for the events prop only.
+            'discovery' => fn (): array => $discovery['totalCount'] === null
+                ? [...$discovery, 'totalCount' => $feed->count($instant)]
+                : $discovery,
             'filters' => $filterOptions->all($instant),
         ]);
     }

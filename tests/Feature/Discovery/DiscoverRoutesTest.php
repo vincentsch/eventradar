@@ -35,6 +35,8 @@ it('serves both card routes from the same public discovery contract', function (
             ->has('discovery')
             ->has('filters.types', 8)
             ->has('filters.locations', 1)
+            ->where('discovery.totalCount', 1)
+            ->where('discovery.totalCountIsCapped', false)
             ->where('discovery.mode', 'feed'));
 })->with(['home' => '/', 'visual one' => '/events-visual-1']);
 
@@ -54,6 +56,7 @@ it('returns an explicit unavailable search state for provider failures', functio
             ->where('discovery.mode', 'search')
             ->where('discovery.status', 'unavailable')
             ->where('discovery.providerCount', 0)
+            ->where('discovery.totalCount', 0)
             ->where('discovery.hydratedCount', 0)
             ->has('events.data', 0));
 });
@@ -98,6 +101,7 @@ it('hydrates a successful search response through the public route', function ()
             ->where('discovery.mode', 'search')
             ->where('discovery.status', 'ready')
             ->where('discovery.providerCount', 1)
+            ->where('discovery.totalCount', 1)
             ->where('discovery.hydratedCount', 1)
             ->has('events.data', 1)
             ->where('events.data.0.id', $event->id));

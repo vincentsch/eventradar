@@ -41,6 +41,7 @@ it('cursor-paginates every visible state in stable chronological order without o
 
     expect($first->events)->toHaveCount(18)
         ->and($second->events)->toHaveCount(7)
+        ->and($feed->count($instant))->toBe(25)
         ->and($firstIds->intersect($secondIds))->toBeEmpty()
         ->and($firstIds->merge($secondIds)->values()->all())->toBe($visible->pluck('id')->all())
         ->and($first->payload())->not->toHaveKey('total');
