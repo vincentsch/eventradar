@@ -8,7 +8,9 @@ use RuntimeException;
 
 final class MapboxGeocoder
 {
-    /** @return list<array<string, float|string|null>> */
+    /**
+     * @return list<array{formatted_address: string, address_line_1: ?string, postal_code: ?string, locality: string, region: ?string, country: string, country_code: string, latitude: ?float, longitude: ?float}>
+     */
     public function forward(string $query): array
     {
         return $this->request('forward', [
@@ -21,7 +23,7 @@ final class MapboxGeocoder
 
     /**
      * @param  array<string, float|int|string>  $parameters
-     * @return list<array<string, float|string|null>>
+     * @return list<array{formatted_address: string, address_line_1: ?string, postal_code: ?string, locality: string, region: ?string, country: string, country_code: string, latitude: ?float, longitude: ?float}>
      */
     private function request(string $endpoint, array $parameters): array
     {
@@ -40,17 +42,33 @@ final class MapboxGeocoder
             ])
             ->throw();
 
-        return collect($response->json('features', []))
-            ->filter(fn ($feature): bool => is_array($feature))
-            ->map(fn (array $feature): array => $this->result($feature))
-            ->filter(fn (array $result): bool => $result['formatted_address'] !== ''
+        $features = $response->json('features', []);
+        if (! is_array($features)) {
+            return [];
+        }
+
+        $results = [];
+        foreach ($features as $feature) {
+            if (! is_array($feature)) {
+                continue;
+            }
+
+            $result = $this->result($feature);
+            if ($result['formatted_address'] !== ''
                 && $result['latitude'] !== null
-                && $result['longitude'] !== null)
-            ->values()
-            ->all();
+                && $result['longitude'] !== null
+            ) {
+                $results[] = $result;
+            }
+        }
+
+        return $results;
     }
 
-    /** @param array<string, mixed> $feature */
+    /**
+     * @param  array<string, mixed>  $feature
+     * @return array{formatted_address: string, address_line_1: ?string, postal_code: ?string, locality: string, region: ?string, country: string, country_code: string, latitude: ?float, longitude: ?float}
+     */
     private function result(array $feature): array
     {
         $properties = is_array($feature['properties'] ?? null) ? $feature['properties'] : [];

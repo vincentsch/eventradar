@@ -9,6 +9,8 @@ use App\Http\Requests\Admin\SaveEventRequest;
 use App\Jobs\ReconcileEventSearchIndex;
 use App\Models\Event;
 use App\Models\EventAttendance;
+use App\Models\EventImage;
+use App\Models\EventMedia;
 use App\Services\Attendance\AttendanceManager;
 use App\Services\Discovery\PublicEventFilterOptions;
 use App\Services\Events\EventLocalDateTimeResolver;
@@ -18,6 +20,7 @@ use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -112,7 +115,7 @@ class EventController extends Controller
         $event->user_id = $request->user()->id;
         $event->image_set_key = $this->defaultImageSet($attributes['type']);
         $event->setAttribute('payload', json_encode(['source' => 'admin'], JSON_THROW_ON_ERROR));
-        $prepared = $media->prepare($event, $request->file('images', []));
+        $prepared = $media->prepare($event, $this->uploadedImages($request));
 
         try {
             DB::transaction(function () use ($event, $media, $prepared, $filters): void {
@@ -175,7 +178,7 @@ class EventController extends Controller
         $scheduleChanged = $record->starts_at->getTimestamp() !== $originalStart;
         $visibilityChanged = $record->status !== $originalStatus;
         $prepared = $request->hasFile('images')
-            ? $media->prepare($record, $request->file('images', []))
+            ? $media->prepare($record, $this->uploadedImages($request))
             : null;
 
         try {
@@ -470,18 +473,26 @@ class EventController extends Controller
     private function images(Event $event): array
     {
         if ($event->media->isNotEmpty()) {
-            return $event->media->map(fn ($image): array => [
+            return array_values($event->media->map(fn (EventMedia $image): array => [
                 'role' => $image->position === 0 ? 'cover' : 'gallery',
                 'path' => $image->url(),
                 'width' => $image->width,
                 'height' => $image->height,
                 'alt' => $image->alt,
-            ])->values()->all();
+            ])->all());
         }
 
-        return $event->imageSet?->images->map(fn ($image): array => [
-            ...$image->only(['role', 'path', 'width', 'height', 'alt']),
-        ])->values()->all() ?? [];
+        if ($event->imageSet === null) {
+            return [];
+        }
+
+        return array_values($event->imageSet->images->map(fn (EventImage $image): array => [
+            'role' => $image->role->value,
+            'path' => $image->path,
+            'width' => $image->width,
+            'height' => $image->height,
+            'alt' => $image->alt,
+        ])->all());
     }
 
     private function defaultImageSet(string $type): string
@@ -495,6 +506,23 @@ class EventController extends Controller
             'sports' => 'sports-community-track-evening',
             'networking' => 'networking-architecture-studio-social',
             'exhibition' => 'exhibition-adaptive-reuse-opening',
+            default => throw new \LogicException("Unsupported event type [{$type}]."),
         };
+    }
+
+    /** @return list<UploadedFile> */
+    private function uploadedImages(SaveEventRequest $request): array
+    {
+        $files = $request->file('images');
+
+        if ($files instanceof UploadedFile) {
+            return [$files];
+        }
+
+        if (! is_array($files)) {
+            return [];
+        }
+
+        return array_values($files);
     }
 }

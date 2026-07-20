@@ -4,9 +4,26 @@ namespace App\Models;
 
 use App\Domain\Attendance\DeliveryKind;
 use App\Domain\Attendance\DeliveryStatus;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $attendance_id
+ * @property int $attendance_revision
+ * @property DeliveryKind $kind
+ * @property DeliveryStatus $status
+ * @property CarbonImmutable $due_at
+ * @property string|null $claim_token
+ * @property CarbonImmutable|null $claimed_at
+ * @property CarbonImmutable|null $sent_at
+ * @property CarbonImmutable|null $skipped_at
+ * @property CarbonImmutable|null $failed_at
+ * @property int $attempt_count
+ * @property string|null $last_error
+ * @property-read EventAttendance $attendance
+ */
 class AttendanceDelivery extends Model
 {
     protected $fillable = [

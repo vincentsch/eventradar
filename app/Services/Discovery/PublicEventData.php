@@ -6,6 +6,7 @@ use App\Domain\Events\EventStatus;
 use App\Domain\Events\EventType;
 use App\Domain\Events\ImageRole;
 use App\Models\Event;
+use App\Models\EventMedia;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use LogicException;
@@ -77,10 +78,10 @@ final class PublicEventData
     private function images(Event $event): array
     {
         if ($event->media->isNotEmpty()) {
-            return $event->media->map(fn ($image): array => [
+            return array_values($event->media->map(fn (EventMedia $image): array => [
                 'src' => $image->position === 0 ? $image->cardUrl() : $image->url(),
-                'alt' => (string) $image->alt,
-            ])->values()->all();
+                'alt' => $image->alt,
+            ])->all());
         }
 
         $images = [];

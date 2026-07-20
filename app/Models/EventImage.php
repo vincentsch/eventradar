@@ -6,6 +6,16 @@ use App\Domain\Events\ImageRole;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $image_set_key
+ * @property ImageRole $role
+ * @property string $path
+ * @property int $width
+ * @property int $height
+ * @property string $sha256
+ * @property string $alt
+ */
 class EventImage extends Model
 {
     public $timestamps = false;

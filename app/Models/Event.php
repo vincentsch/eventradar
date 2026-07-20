@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Domain\Events\EventStatus;
 use App\Domain\Events\EventType;
+use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,8 +17,36 @@ use Illuminate\Support\Str;
 /**
  * The authoritative normalized event. Payload deliberately remains an uncast provenance string.
  *
+ * @property string $id
+ * @property int|null $user_id
+ * @property string $title
+ * @property string $description
+ * @property string $organizer_name
+ * @property string $venue_name
+ * @property string|null $formatted_address
+ * @property string|null $address_line_1
+ * @property CarbonImmutable $starts_at
+ * @property CarbonImmutable $ends_at
+ * @property string $timezone
+ * @property CarbonImmutable $starts_on_local
+ * @property string $location_key
+ * @property string $locality
+ * @property string|null $region
+ * @property string|null $postal_code
+ * @property string $country
+ * @property string $country_code
+ * @property float|null $latitude
+ * @property float|null $longitude
+ * @property string $image_set_key
  * @property EventStatus $status
  * @property EventType $type
+ * @property list<string> $tags
+ * @property string|null $minimum_price
+ * @property string|null $currency_code
+ * @property int|null $capacity
+ * @property-read EventImageSet|null $imageSet
+ * @property-read Collection<int, EventAttendance> $attendances
+ * @property-read Collection<int, EventMedia> $media
  */
 class Event extends Model
 {
