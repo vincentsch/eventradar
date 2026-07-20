@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\DispatchAttendanceReminders;
+use App\Console\Commands\MakeUserAdmin;
 use App\Console\Commands\RebuildEventSearchIndex;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
@@ -17,7 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withCommands([DispatchAttendanceReminders::class, RebuildEventSearchIndex::class])
+    ->withCommands([
+        DispatchAttendanceReminders::class,
+        MakeUserAdmin::class,
+        RebuildEventSearchIndex::class,
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,

@@ -29,6 +29,16 @@ The seeded administrator is `reviewer@example.test` with password `password`. Ma
 on the configured `FORWARD_MAILPIT_DASHBOARD_PORT`. Horizon and the scheduler run as Compose
 services, so confirmations and reminders work without extra terminals.
 
+Promote an existing account or create a verified administrator without editing the database:
+
+```bash
+./vendor/bin/sail artisan user:make-admin person@example.test
+```
+
+When the email does not exist, the command asks for a name and a hidden, confirmed password. For
+non-interactive provisioning, pass `--name` and `--password`. Supplying `--password` for an existing
+user intentionally resets that user's password.
+
 The default `dev` seed creates 10,000 deterministic events. The Sail MySQL service reserves a 2 GB
 InnoDB buffer pool for representative indexed-catalogue work. For a quick reset or the explicit
 scale profile:
