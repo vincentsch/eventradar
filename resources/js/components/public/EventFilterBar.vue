@@ -14,6 +14,7 @@ import EventDateRangePicker from '@/components/public/EventDateRangePicker.vue';
 import FilterSelect from '@/components/public/FilterSelect.vue';
 import MultiSelectFilter from '@/components/public/MultiSelectFilter.vue';
 import { customDateValue } from '@/components/public/publicEventDisplay';
+import SelectedFilterPills from '@/components/public/SelectedFilterPills.vue';
 import UpcomingOnlyToggle from '@/components/public/UpcomingOnlyToggle.vue';
 import { useAutoApplyingEventFilters } from '@/components/public/useAutoApplyingEventFilters';
 import { usePublicEventFilters } from '@/components/public/usePublicEventFilters';
@@ -45,7 +46,7 @@ const {
     upcomingOnly,
     locationOptions,
     categoryOptions,
-    hasFilters,
+    hasClearableFilters,
     parameters,
     reset,
     dateChoice,
@@ -212,15 +213,27 @@ defineExpose({ resetFilters });
         </div>
 
         <div
+            data-filter-selection-bar
             class="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-stone-900/10 px-1 pt-2"
         >
-            <p v-if="processing" class="text-xs font-semibold text-stone-500">
-                Updating results…
-            </p>
+            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <SelectedFilterPills
+                    v-model:locations="locationChoices"
+                    v-model:categories="categoryChoices"
+                    :location-options="locationOptions"
+                    :category-options="categoryOptions"
+                />
+                <p
+                    v-if="processing"
+                    class="text-xs font-semibold text-stone-500"
+                >
+                    Updating results…
+                </p>
+            </div>
             <div class="ml-auto flex flex-wrap items-center justify-end gap-1">
                 <UpcomingOnlyToggle v-model="upcomingOnly" />
                 <button
-                    v-if="hasFilters"
+                    v-if="hasClearableFilters"
                     type="button"
                     class="inline-flex h-10 items-center rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                     @click="clearFilters"

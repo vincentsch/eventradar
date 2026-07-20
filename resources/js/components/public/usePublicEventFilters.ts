@@ -24,12 +24,11 @@ export function usePublicEventFilters(
 
     const locationOptions = computed(() => filters.locations);
     const categoryOptions = computed(() => filters.types);
-    const hasFilters = computed(
+    const hasClearableFilters = computed(
         () =>
             searchTerm.value.trim() !== '' ||
             locationChoices.value.length > 0 ||
             categoryChoices.value.length > 0 ||
-            !upcomingOnly.value ||
             date.dateChoice.value !== anyDateValue,
     );
 
@@ -123,7 +122,7 @@ export function usePublicEventFilters(
         upcomingOnly,
         locationOptions,
         categoryOptions,
-        hasFilters,
+        hasClearableFilters,
         parameters,
         reset,
     };

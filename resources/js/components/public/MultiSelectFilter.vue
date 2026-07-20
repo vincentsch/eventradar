@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronDown, Search, X } from '@lucide/vue';
+import { Check, ChevronDown, Search } from '@lucide/vue';
 import {
     ComboboxAnchor,
     ComboboxContent,
@@ -34,11 +34,13 @@ const emit = defineEmits<{
 }>();
 const open = ref(false);
 const selectedOptions = computed(() =>
-    props.modelValue
-        .map((value) => props.options.find((option) => option.value === value))
-        .filter(
-            (option): option is PublicEventFilterOption => option !== undefined,
-        ),
+    props.modelValue.map(
+        (value) =>
+            props.options.find((option) => option.value === value) ?? {
+                value,
+                label: value,
+            },
+    ),
 );
 const summary = computed(() => {
     if (selectedOptions.value.length === 0) {
@@ -59,13 +61,6 @@ const triggerSurface = computed(() =>
 
 function update(value: string[] | string): void {
     emit('update:modelValue', Array.isArray(value) ? value : [value]);
-}
-
-function remove(value: string): void {
-    emit(
-        'update:modelValue',
-        props.modelValue.filter((selected) => selected !== value),
-    );
 }
 </script>
 
@@ -141,23 +136,5 @@ function remove(value: string): void {
                 </ComboboxContent>
             </ComboboxPortal>
         </ComboboxRoot>
-
-        <ul
-            v-if="selectedOptions.length"
-            :aria-label="`Selected ${label.toLowerCase()}`"
-            class="mt-1.5 flex flex-wrap gap-1.5"
-        >
-            <li v-for="option in selectedOptions" :key="option.value">
-                <button
-                    type="button"
-                    class="inline-flex h-7 max-w-full items-center gap-1 rounded-full bg-stone-900 px-2.5 text-[11px] font-bold text-white transition-colors hover:bg-stone-700 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-1 focus-visible:outline-none"
-                    :aria-label="`Remove ${option.label}`"
-                    @click="remove(option.value)"
-                >
-                    <span class="max-w-40 truncate">{{ option.label }}</span>
-                    <X class="size-3" aria-hidden="true" />
-                </button>
-            </li>
-        </ul>
     </div>
 </template>

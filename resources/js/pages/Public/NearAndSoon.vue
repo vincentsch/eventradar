@@ -22,6 +22,7 @@ import {
     eventDateParts,
     eventWeekday,
 } from '@/components/public/publicEventDisplay';
+import SelectedFilterPills from '@/components/public/SelectedFilterPills.vue';
 import UpcomingOnlyToggle from '@/components/public/UpcomingOnlyToggle.vue';
 import { useAutoApplyingEventFilters } from '@/components/public/useAutoApplyingEventFilters';
 import { usePublicEventFilters } from '@/components/public/usePublicEventFilters';
@@ -70,7 +71,7 @@ const {
     upcomingOnly,
     locationOptions,
     categoryOptions,
-    hasFilters,
+    hasClearableFilters,
     parameters,
     reset,
     dateChoice,
@@ -413,17 +414,28 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
                             </button>
                         </div>
                         <div
+                            data-filter-selection-bar
                             class="flex flex-wrap items-center justify-between gap-2 border-t border-stone-900/10 pt-2 sm:col-span-2"
                         >
-                            <UpcomingOnlyToggle v-model="upcomingOnly" />
-                            <button
-                                v-if="hasFilters"
-                                type="button"
-                                class="h-9 rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
-                                @click="clearFilters"
+                            <SelectedFilterPills
+                                v-model:locations="locationChoices"
+                                v-model:categories="categoryChoices"
+                                :location-options="locationOptions"
+                                :category-options="categoryOptions"
+                            />
+                            <div
+                                class="ml-auto flex flex-wrap items-center justify-end gap-1"
                             >
-                                Clear filters
-                            </button>
+                                <UpcomingOnlyToggle v-model="upcomingOnly" />
+                                <button
+                                    v-if="hasClearableFilters"
+                                    type="button"
+                                    class="h-9 rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                                    @click="clearFilters"
+                                >
+                                    Clear filters
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </form>

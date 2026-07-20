@@ -111,6 +111,9 @@ test('discovery filters, pagination, details, and map work with live data', asyn
     await expect(upcomingOnly).toBeChecked();
     await upcomingOnly.uncheck();
     await expect(page).toHaveURL(/ongoing=1/);
+    await expect(
+        page.getByRole('button', { name: 'Clear filters' }),
+    ).toHaveCount(0);
     await upcomingOnly.check();
     await expect
         .poll(() => new URL(page.url()).searchParams.get('ongoing'))
@@ -182,8 +185,9 @@ test('discovery filters, pagination, details, and map work with live data', asyn
         .poll(() => queryValues(page.url(), 'type'))
         .toEqual(['concert', 'conference']);
     await page.keyboard.press('Escape');
+    const selectionBar = page.locator('[data-filter-selection-bar]');
     await expect(
-        page.getByRole('button', { name: 'Remove Concert' }),
+        selectionBar.getByRole('button', { name: 'Remove Concert' }),
     ).toBeVisible();
     await page.getByRole('button', { name: 'Remove Conference' }).click();
     await expect
