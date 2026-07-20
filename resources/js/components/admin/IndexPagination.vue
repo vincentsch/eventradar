@@ -33,14 +33,24 @@ defineProps<{
                 v-if="prevUrl"
                 :href="prevUrl"
                 preserve-scroll
-                :class="cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 sm:flex-none')"
+                :class="
+                    cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'flex-1 sm:flex-none',
+                    )
+                "
             >
                 Previous
             </Link>
             <span
                 v-else
                 aria-disabled="true"
-                :class="cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 opacity-50 sm:flex-none')"
+                :class="
+                    cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'flex-1 opacity-50 sm:flex-none',
+                    )
+                "
             >
                 Previous
             </span>
@@ -48,14 +58,24 @@ defineProps<{
                 v-if="nextUrl"
                 :href="nextUrl"
                 preserve-scroll
-                :class="cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 sm:flex-none')"
+                :class="
+                    cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'flex-1 sm:flex-none',
+                    )
+                "
             >
                 Next
             </Link>
             <span
                 v-else
                 aria-disabled="true"
-                :class="cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 opacity-50 sm:flex-none')"
+                :class="
+                    cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'flex-1 opacity-50 sm:flex-none',
+                    )
+                "
             >
                 Next
             </span>
