@@ -30,6 +30,9 @@ class SaveEventRequest extends FormRequest
     public function rules(): array
     {
         $images = $this->routeIs('admin.events.store') ? ['required'] : ['sometimes'];
+        $coordinatesRequired = Rule::requiredIf(
+            fn (): bool => in_array($this->input('status'), EventStatus::publicValues(), true),
+        );
 
         return [
             'title' => ['required', 'string', 'max:160'],
@@ -43,8 +46,8 @@ class SaveEventRequest extends FormRequest
             'region' => ['nullable', 'string', 'max:80'],
             'country' => ['required', 'string', 'max:80'],
             'country_code' => ['required', 'string', 'size:2', 'alpha:ascii'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            'latitude' => ['nullable', $coordinatesRequired, 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', $coordinatesRequired, 'numeric', 'between:-180,180', 'required_with:latitude'],
             'timezone' => ['required', 'string', Rule::in(timezone_identifiers_list())],
             'starts_at_local' => ['required', 'date_format:Y-m-d\TH:i'],
             'ends_at_local' => ['required', 'date_format:Y-m-d\TH:i'],

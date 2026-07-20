@@ -9,13 +9,16 @@ use App\Http\Controllers\Admin\EventController as AdminEventController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\NearAndSoonController;
 use App\Http\Controllers\SignedAttendanceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', DiscoverController::class)->name('home');
 
 Route::get('events-visual-1', DiscoverController::class)->name('events.visual1');
-Route::inertia('events-visual-2', 'Public/NearAndSoon')->name('events.visual2');
+Route::get('events-visual-2', NearAndSoonController::class)
+    ->middleware('throttle:60,1')
+    ->name('events.visual2');
 
 Route::redirect('events', '/admin/events')->name('events.index');
 Route::get('events/{event}', [EventController::class, 'show'])->name('events.show');

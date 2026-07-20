@@ -77,6 +77,37 @@ it('requires an explicit UTC offset when a local time occurs twice', function ()
         ->assertSessionHasErrors('starts_at_local_offset');
 });
 
+it('requires coordinates before an event can be publicly visible', function () {
+    Storage::fake('public');
+
+    $this->from('/admin/events/create')->post('/admin/events', validEventInput([
+        'status' => 'published',
+        'latitude' => null,
+        'longitude' => null,
+        'images' => [
+            UploadedFile::fake()->image('cover.jpg'),
+            UploadedFile::fake()->image('detail.jpg'),
+        ],
+    ]))
+        ->assertRedirect('/admin/events/create')
+        ->assertSessionHasErrors(['latitude', 'longitude']);
+});
+
+it('does not publish an existing draft without coordinates', function () {
+    $event = Event::factory()->withoutCoordinates()->create(['status' => 'draft']);
+
+    $this->from("/admin/events/{$event->id}/edit")
+        ->put("/admin/events/{$event->id}", validEventInput([
+            'status' => 'published',
+            'latitude' => null,
+            'longitude' => null,
+        ]))
+        ->assertRedirect("/admin/events/{$event->id}/edit")
+        ->assertSessionHasErrors(['latitude', 'longitude']);
+
+    expect($event->refresh()->status->value)->toBe('draft');
+});
+
 it('only permanently deletes drafts without attendance history', function () {
     Queue::fake();
     $draft = Event::factory()->create(['status' => 'draft']);
