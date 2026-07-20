@@ -4,10 +4,10 @@ import {
     eventCategoryLabel,
     eventWeekday,
 } from '@/components/public/publicEventDisplay';
-import type { PublicEventVisualFixture } from '@/types/public-events';
+import type { PublicEvent } from '@/types/public-events';
 
 defineProps<{
-    event: PublicEventVisualFixture;
+    event: PublicEvent;
     selected: boolean;
 }>();
 

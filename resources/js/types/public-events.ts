@@ -8,21 +8,57 @@ export type PublicEventCategory =
     | 'networking'
     | 'exhibition';
 
-export interface PublicEventVisualFixture {
+export interface PublicEventImage {
+    src: string;
+    alt: string;
+}
+
+export interface PublicEvent {
     id: string;
+    status: 'published' | 'sold_out';
+    href: string;
     title: string;
     description: string;
     category: PublicEventCategory;
     startsAt: string;
+    localDate: string;
     dateLabel: string;
     timeLabel: string;
     timezoneLabel: string;
+    timezone: string;
     venue: string;
     locationLabel: string;
-    latitude: number;
-    longitude: number;
-    image: {
-        src: string;
-        alt: string;
-    };
+    latitude: number | null;
+    longitude: number | null;
+    image: PublicEventImage;
+    detailImage: PublicEventImage;
+}
+
+export interface PublicEventQuery {
+    q: string | null;
+    type: string | null;
+    location: string | null;
+    from: string | null;
+    to: string | null;
+}
+
+export interface PublicEventFilterOption {
+    value: string;
+    label: string;
+}
+
+export interface PublicEventFilterOptions {
+    types: PublicEventFilterOption[];
+    locations: PublicEventFilterOption[];
+}
+
+export interface PublicEventCollection {
+    data: PublicEvent[];
+}
+
+export interface MapBounds {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
 }

@@ -1,31 +1,22 @@
 import type {
     PublicEventCategory,
-    PublicEventVisualFixture,
+    PublicEvent,
+    PublicEventFilterOption,
 } from '@/types/public-events';
 
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-/**
- * Fixture instants are authored so their UTC calendar date matches the
- * event-local dateLabel, so the placeholder UI can derive a stable weekday
- * without a timezone library. Backend integration should keep providing
- * display-ready date/time labels alongside the raw instant.
- */
-export function eventWeekday(event: PublicEventVisualFixture): string {
-    return WEEKDAY_LABELS[new Date(event.startsAt).getUTCDay()];
+export function eventWeekday(event: PublicEvent): string {
+    return new Intl.DateTimeFormat('en', {
+        weekday: 'short',
+        timeZone: event.timezone,
+    }).format(new Date(event.startsAt));
 }
 
 export function eventCategoryLabel(category: PublicEventCategory): string {
     return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
-/**
- * Every set in the local image catalogue pairs its cover with a detail
- * shot. Deriving the sibling keeps the two-image presentation visible
- * until the backend supplies a real gallery payload.
- */
-export function eventDetailImageSrc(event: PublicEventVisualFixture): string {
-    return event.image.src.replace(/cover\.webp$/, 'detail.webp');
+export function eventDetailImageSrc(event: PublicEvent): string {
+    return event.detailImage.src;
 }
 
 export interface EventDateParts {
@@ -33,9 +24,7 @@ export interface EventDateParts {
     month: string;
 }
 
-export function eventDateParts(
-    event: PublicEventVisualFixture,
-): EventDateParts {
+export function eventDateParts(event: PublicEvent): EventDateParts {
     const [day = '', month = ''] = event.dateLabel.split(' ');
 
     return { day, month };
@@ -93,40 +82,14 @@ export function formatDateRangeLabel(
     return `${dayLabel(start)} – ${dayLabel(end)} ${end.year}`;
 }
 
-/** Select value that switches the date filter to the custom range picker. */
 export const customDateValue = 'custom';
+export const anyDateValue = 'any';
 
-/**
- * Placeholder choices for the not-yet-wired filter controls. Real options
- * arrive with the search integration; only the control shapes matter here.
- */
-export const dateFilterOptions = [
-    'Any date',
-    'Today',
-    'Tomorrow',
-    'This weekend',
-    'Next 7 days',
-    'This month',
-];
-
-export const locationFilterOptions = [
-    'Anywhere',
-    'Berlin',
-    'Lisbon',
-    'Melbourne',
-    'Mexico City',
-    'New York',
-    'Tokyo',
-];
-
-export const categoryFilterOptions = [
-    'All categories',
-    'Concert',
-    'Conference',
-    'Exhibition',
-    'Festival',
-    'Meetup',
-    'Networking',
-    'Sports',
-    'Workshop',
+export const dateFilterOptions: PublicEventFilterOption[] = [
+    { value: anyDateValue, label: 'Any date' },
+    { value: 'today', label: 'Today' },
+    { value: 'tomorrow', label: 'Tomorrow' },
+    { value: 'weekend', label: 'This weekend' },
+    { value: 'next-seven-days', label: 'Next 7 days' },
+    { value: 'month', label: 'This month' },
 ];

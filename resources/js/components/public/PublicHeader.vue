@@ -1,15 +1,31 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { LogIn } from '@lucide/vue';
+import { LogIn, UserRound } from '@lucide/vue';
 import { computed } from 'vue';
 import PublicBrand from '@/components/public/PublicBrand.vue';
+import { usePublicViewLinks } from '@/components/public/usePublicViewLinks';
+import type { Auth } from '@/types';
 
-const page = usePage();
+const page = usePage<{ auth: Auth }>();
+const { publicViewHref } = usePublicViewLinks();
 
 const isDiscover = computed(
-    () => page.url === '/' || page.url.startsWith('/events-visual-1'),
+    () =>
+        page.url === '/' ||
+        page.url.startsWith('/?') ||
+        page.url.startsWith('/events-visual-1'),
 );
 const isNearAndSoon = computed(() => page.url.startsWith('/events-visual-2'));
+const accountLabel = computed(() => {
+    if (!page.props.auth.user) {
+        return 'Sign in';
+    }
+
+    return page.props.auth.user.is_admin ? 'Admin' : 'My events';
+});
+const accountHref = computed(() =>
+    page.props.auth.user ? '/account' : '/login',
+);
 
 const linkClasses = (active: boolean) => [
     'relative rounded-full px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900',
@@ -34,14 +50,14 @@ const linkClasses = (active: boolean) => [
                 class="ml-auto flex items-center gap-0.5 sm:gap-2 md:absolute md:left-1/2 md:ml-0 md:-translate-x-1/2"
             >
                 <Link
-                    href="/"
+                    :href="publicViewHref('/')"
                     :aria-current="isDiscover ? 'page' : undefined"
                     :class="linkClasses(isDiscover)"
                 >
                     Discover
                 </Link>
                 <Link
-                    href="/events-visual-2"
+                    :href="publicViewHref('/events-visual-2')"
                     :aria-current="isNearAndSoon ? 'page' : undefined"
                     :class="linkClasses(isNearAndSoon)"
                 >
@@ -50,12 +66,17 @@ const linkClasses = (active: boolean) => [
             </nav>
 
             <Link
-                href="/login"
-                aria-label="Admin sign in"
+                :href="accountHref"
+                :aria-label="accountLabel"
                 class="ml-1.5 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-stone-900/15 bg-white/60 px-3 text-xs font-bold text-stone-600 transition-colors hover:border-stone-900/30 hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none md:ml-auto"
             >
-                <LogIn class="size-3.5" aria-hidden="true" />
-                <span class="hidden md:inline">Admin</span>
+                <UserRound
+                    v-if="page.props.auth.user"
+                    class="size-3.5"
+                    aria-hidden="true"
+                />
+                <LogIn v-else class="size-3.5" aria-hidden="true" />
+                <span class="hidden md:inline">{{ accountLabel }}</span>
             </Link>
         </div>
     </header>

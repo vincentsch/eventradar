@@ -1,21 +1,56 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
-import { ArrowDown } from '@lucide/vue';
+import { Head, InfiniteScroll, router, usePage } from '@inertiajs/vue3';
+import { ArrowDown, LoaderCircle, SearchX } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import EventCard from '@/components/public/EventCard.vue';
 import EventDetailModal from '@/components/public/EventDetailModal.vue';
 import EventFilterBar from '@/components/public/EventFilterBar.vue';
 import ViewNavigation from '@/components/public/ViewNavigation.vue';
-import { publicEventFixtures } from '@/fixtures/public-events';
-import type { PublicEventVisualFixture } from '@/types/public-events';
+import type {
+    PublicEvent,
+    PublicEventCollection,
+    PublicEventFilterOptions,
+    PublicEventQuery,
+} from '@/types/public-events';
 
-const events = publicEventFixtures;
+interface DiscoveryState {
+    mode: 'feed' | 'search';
+    status: 'ready' | 'unavailable';
+    providerCount: number | null;
+    hydratedCount: number | null;
+    processingTimeMs: number | null;
+}
 
-const detailEvent = ref<PublicEventVisualFixture | null>(null);
+const props = defineProps<{
+    events: PublicEventCollection;
+    query: PublicEventQuery;
+    discovery: DiscoveryState;
+    filters: PublicEventFilterOptions;
+}>();
+const page = usePage();
+const detailEvent = ref<PublicEvent | null>(null);
+const filtering = ref(false);
+const eventRows = computed(() => props.events.data);
+const currentPath = computed(() =>
+    page.url.startsWith('/events-visual-1') ? '/events-visual-1' : '/',
+);
 
 const cityCount = computed(
-    () => new Set(events.map((event) => event.locationLabel)).size,
+    () => new Set(eventRows.value.map((event) => event.locationLabel)).size,
 );
+
+function applyFilters(parameters: Record<string, string>) {
+    router.get(currentPath.value, parameters, {
+        replace: true,
+        reset: ['events'],
+        onStart: () => (filtering.value = true),
+        onFinish: () => (filtering.value = false),
+    });
+}
+
+function clearFilters() {
+    applyFilters({});
+}
 </script>
 
 <template>
@@ -55,16 +90,31 @@ const cityCount = computed(
             </div>
         </div>
 
-        <EventFilterBar class="mt-10" />
+        <EventFilterBar
+            :query="query"
+            :filters="filters"
+            :processing="filtering"
+            class="mt-10"
+            @apply="applyFilters"
+            @clear="clearFilters"
+        />
 
         <div
             class="mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-3"
         >
             <p class="text-sm text-stone-600">
                 <strong class="font-bold text-stone-900">
-                    {{ events.length }} events
+                    <template v-if="discovery.providerCount !== null">
+                        {{ discovery.providerCount }} events
+                    </template>
+                    <template v-else>
+                        Showing {{ eventRows.length }} events
+                    </template>
                 </strong>
-                in {{ cityCount }} cities worldwide
+                <template v-if="eventRows.length">
+                    across {{ cityCount }} loaded
+                    {{ cityCount === 1 ? 'place' : 'places' }}
+                </template>
                 <span class="text-stone-500">
                     · times shown are each event's own
                 </span>
@@ -72,25 +122,91 @@ const cityCount = computed(
             <ViewNavigation active="grid" />
         </div>
 
-        <ul class="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <li v-for="(event, index) in events" :key="event.id">
+        <div
+            v-if="discovery.status === 'unavailable'"
+            role="status"
+            class="mt-8 rounded-2xl border border-orange-700/20 bg-orange-50 p-6 text-center"
+        >
+            <SearchX
+                class="mx-auto size-6 text-orange-700"
+                aria-hidden="true"
+            />
+            <h2 class="mt-3 text-lg font-bold text-stone-900">
+                Search is temporarily unavailable
+            </h2>
+            <p class="mt-1 text-sm text-stone-600">
+                Clear the filters to continue browsing the database-backed event
+                feed.
+            </p>
+            <button
+                type="button"
+                class="mt-4 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-bold text-white"
+                @click="clearFilters"
+            >
+                Browse all events
+            </button>
+        </div>
+
+        <div
+            v-else-if="eventRows.length === 0"
+            class="mt-8 rounded-2xl border border-stone-900/10 bg-white/60 p-8 text-center"
+        >
+            <SearchX class="mx-auto size-6 text-stone-500" aria-hidden="true" />
+            <h2 class="mt-3 text-lg font-bold text-stone-900">
+                No events found
+            </h2>
+            <p class="mt-1 text-sm text-stone-600">
+                Try a broader place, date range, or category.
+            </p>
+            <button
+                type="button"
+                class="mt-4 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-bold text-white"
+                @click="clearFilters"
+            >
+                Clear filters
+            </button>
+        </div>
+
+        <InfiniteScroll
+            v-else
+            data="events"
+            as="ul"
+            manual
+            only-next
+            :preserve-url="false"
+            class="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3"
+        >
+            <li v-for="(event, index) in eventRows" :key="event.id">
                 <EventCard
                     :event="event"
                     :image-loading="index < 3 ? 'eager' : 'lazy'"
                     @open="detailEvent = event"
                 />
             </li>
-        </ul>
 
-        <div class="mt-12 flex justify-center">
-            <button
-                type="button"
-                class="inline-flex h-12 items-center gap-2 rounded-full bg-stone-900 px-7 text-sm font-bold text-white shadow-lg shadow-stone-900/20 transition duration-200 hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none motion-safe:hover:-translate-y-0.5"
-            >
-                Load more events
-                <ArrowDown class="size-4" aria-hidden="true" />
-            </button>
-        </div>
+            <template #next="{ fetch, loading, hasMore }">
+                <div class="mt-12 flex justify-center">
+                    <button
+                        v-if="hasMore"
+                        type="button"
+                        :disabled="loading || filtering"
+                        class="inline-flex h-12 items-center gap-2 rounded-full bg-stone-900 px-7 text-sm font-bold text-white shadow-lg shadow-stone-900/20 transition duration-200 hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60 motion-safe:hover:-translate-y-0.5"
+                        @click="fetch"
+                    >
+                        <LoaderCircle
+                            v-if="loading"
+                            class="size-4 animate-spin motion-reduce:animate-none"
+                            aria-hidden="true"
+                        />
+                        <ArrowDown v-else class="size-4" aria-hidden="true" />
+                        {{ loading ? 'Loading events' : 'Load more events' }}
+                    </button>
+                    <p v-else class="text-sm font-semibold text-stone-500">
+                        You have reached the end of these results.
+                    </p>
+                </div>
+            </template>
+        </InfiniteScroll>
 
         <EventDetailModal :event="detailEvent" @close="detailEvent = null" />
     </section>

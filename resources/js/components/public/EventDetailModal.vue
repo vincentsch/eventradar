@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import {
     CalendarDays,
     ChevronLeft,
@@ -21,22 +22,16 @@ import {
     eventDetailImageSrc,
     eventWeekday,
 } from '@/components/public/publicEventDisplay';
-import type { PublicEventVisualFixture } from '@/types/public-events';
+import type { PublicEvent } from '@/types/public-events';
 
 const props = defineProps<{
-    event: PublicEventVisualFixture | null;
+    event: PublicEvent | null;
 }>();
 
 const emit = defineEmits<{
     close: [];
 }>();
 
-/**
- * Placeholder gallery: the fixture carries one declared image and every
- * catalogue set pairs it with a detail shot. A real gallery payload will
- * replace this list; the controls already handle any image count and
- * disappear for a single image.
- */
 const galleryImages = computed(() => {
     if (!props.event) {
         return [];
@@ -44,8 +39,15 @@ const galleryImages = computed(() => {
 
     return [
         { src: props.event.image.src, alt: props.event.image.alt },
-        { src: eventDetailImageSrc(props.event), alt: '' },
-    ];
+        {
+            src: eventDetailImageSrc(props.event),
+            alt: props.event.detailImage.alt,
+        },
+    ].filter(
+        (image, index, images) =>
+            images.findIndex((candidate) => candidate.src === image.src) ===
+            index,
+    );
 });
 
 const galleryIndex = ref(0);
@@ -253,6 +255,12 @@ const galleryButtonClasses =
                             >
                                 {{ event.description }}
                             </DialogDescription>
+                            <Link
+                                :href="event.href"
+                                class="mt-6 inline-flex h-11 items-center rounded-full bg-stone-900 px-5 text-sm font-bold text-white transition-colors hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none"
+                            >
+                                View full event details
+                            </Link>
                         </div>
                     </div>
                 </div>

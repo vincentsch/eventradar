@@ -3,6 +3,7 @@ import {
     CalendarDays,
     CalendarRange,
     ChevronDown,
+    LoaderCircle,
     MapPin,
     Search,
     SlidersHorizontal,
@@ -12,22 +13,37 @@ import { useMediaQuery } from '@vueuse/core';
 import { ref } from 'vue';
 import EventDateRangePicker from '@/components/public/EventDateRangePicker.vue';
 import FilterSelect from '@/components/public/FilterSelect.vue';
-import {
-    categoryFilterOptions,
-    customDateValue,
-    locationFilterOptions,
-} from '@/components/public/publicEventDisplay';
-import { useCustomDateRange } from '@/components/public/useCustomDateRange';
+import { customDateValue } from '@/components/public/publicEventDisplay';
+import { usePublicEventFilters } from '@/components/public/usePublicEventFilters';
+import type {
+    PublicEventFilterOptions,
+    PublicEventQuery,
+} from '@/types/public-events';
 
-// Presentation-only state: the visuals respond, real querying arrives with
-// the backend integration.
+const props = withDefaults(
+    defineProps<{
+        query: PublicEventQuery;
+        filters: PublicEventFilterOptions;
+        processing?: boolean;
+    }>(),
+    { processing: false },
+);
+const emit = defineEmits<{
+    apply: [parameters: Record<string, string>];
+    clear: [];
+}>();
 const filtersOpen = ref(false);
-const searchTerm = ref('');
-const locationChoice = ref(locationFilterOptions[0]);
-const categoryChoice = ref(categoryFilterOptions[0]);
 const showsTwoMonths = useMediaQuery('(min-width: 640px)');
 
 const {
+    searchTerm,
+    locationChoice,
+    categoryChoice,
+    locationOptions,
+    categoryOptions,
+    hasFilters,
+    parameters,
+    reset,
     dateChoice,
     dateRange,
     rangePanelOpen,
@@ -37,7 +53,16 @@ const {
     openRangePanel,
     dismissRangePanel,
     clearDateRange,
-} = useCustomDateRange('discover-date');
+} = usePublicEventFilters(props.query, props.filters, 'discover-date');
+
+function applyFilters() {
+    emit('apply', parameters());
+}
+
+function clearFilters() {
+    reset();
+    emit('clear');
+}
 </script>
 
 <template>
@@ -45,7 +70,8 @@ const {
         role="search"
         aria-label="Search and filter events"
         class="rounded-2xl border border-stone-900/10 bg-[#fffdf8] p-2 shadow-lg shadow-stone-900/5"
-        @submit.prevent
+        :aria-busy="processing"
+        @submit.prevent="applyFilters"
     >
         <div
             class="grid gap-2 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))]"
@@ -96,7 +122,7 @@ const {
                 v-model="locationChoice"
                 label="Location"
                 :icon="MapPin"
-                :options="locationFilterOptions"
+                :options="locationOptions"
                 :class="filtersOpen ? '' : 'hidden sm:block'"
             />
             <FilterSelect
@@ -104,7 +130,7 @@ const {
                 v-model="categoryChoice"
                 label="Category"
                 :icon="Tag"
-                :options="categoryFilterOptions"
+                :options="categoryOptions"
                 :class="filtersOpen ? '' : 'hidden sm:block'"
             />
         </div>
@@ -156,6 +182,31 @@ const {
                 @click="clearDateRange"
             >
                 Clear
+            </button>
+        </div>
+
+        <div
+            class="mt-2 flex flex-wrap items-center justify-end gap-2 border-t border-stone-900/10 px-1 pt-2"
+        >
+            <button
+                v-if="hasFilters"
+                type="button"
+                class="inline-flex h-10 items-center rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                @click="clearFilters"
+            >
+                Clear filters
+            </button>
+            <button
+                type="submit"
+                :disabled="processing"
+                class="inline-flex h-10 items-center gap-2 rounded-full bg-stone-900 px-5 text-xs font-bold text-white transition-colors hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60"
+            >
+                <LoaderCircle
+                    v-if="processing"
+                    class="size-3.5 animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                />
+                {{ processing ? 'Finding events' : 'Apply filters' }}
             </button>
         </div>
     </form>

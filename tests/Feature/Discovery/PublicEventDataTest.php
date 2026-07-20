@@ -31,6 +31,7 @@ it('maps canonical event time location and both checked images without private f
         'href' => "/events/{$event->id}",
         'category' => 'concert',
         'startsAt' => '2026-08-21T19:30:00Z',
+        'localDate' => '2026-08-21',
         'dateLabel' => '21 Aug',
         'timeLabel' => '21:30',
         'timezoneLabel' => 'CEST',

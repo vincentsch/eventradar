@@ -5,11 +5,11 @@ import {
     eventCategoryLabel,
     eventDateParts,
 } from '@/components/public/publicEventDisplay';
-import type { PublicEventVisualFixture } from '@/types/public-events';
+import type { PublicEvent } from '@/types/public-events';
 
 const props = withDefaults(
     defineProps<{
-        event: PublicEventVisualFixture;
+        event: PublicEvent;
         imageLoading?: 'eager' | 'lazy';
     }>(),
     { imageLoading: 'lazy' },
@@ -24,6 +24,7 @@ const dateParts = computed(() => eventDateParts(props.event));
 
 <template>
     <article
+        data-event-card
         class="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-stone-900/10 bg-[#fffdf8] shadow-sm shadow-stone-900/5 transition duration-200 focus-within:ring-2 focus-within:ring-stone-900 hover:shadow-md hover:shadow-stone-900/10 motion-safe:hover:-translate-y-0.5"
     >
         <div class="relative aspect-[3/2] overflow-hidden bg-stone-200">

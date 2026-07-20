@@ -61,6 +61,7 @@ final class PublicEventData
             'description' => (string) $event->description,
             'category' => $type instanceof EventType ? $type->value : (string) $type,
             'startsAt' => CarbonImmutable::instance($startsAt)->utc()->toIso8601ZuluString(),
+            'localDate' => $localStart->format('Y-m-d'),
             'dateLabel' => $localStart->format('j M'),
             'timeLabel' => $localStart->format('H:i'),
             'timezoneLabel' => $localStart->format('T'),

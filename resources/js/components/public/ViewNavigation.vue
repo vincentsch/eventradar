@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { LayoutGrid, Map as MapIcon } from '@lucide/vue';
+import { usePublicViewLinks } from '@/components/public/usePublicViewLinks';
 
 defineProps<{
     active: 'grid' | 'map';
 }>();
+
+const { publicViewHref } = usePublicViewLinks();
 
 const segmentClasses = (current: boolean) => [
     'inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2',
@@ -20,7 +23,7 @@ const segmentClasses = (current: boolean) => [
         class="inline-flex items-center gap-1 rounded-full border border-stone-900/10 bg-[#fffdf8] p-1 shadow-sm shadow-stone-900/5"
     >
         <Link
-            href="/"
+            :href="publicViewHref('/')"
             :aria-current="active === 'grid' ? 'page' : undefined"
             :class="segmentClasses(active === 'grid')"
         >
@@ -28,7 +31,7 @@ const segmentClasses = (current: boolean) => [
             Grid
         </Link>
         <Link
-            href="/events-visual-2"
+            :href="publicViewHref('/events-visual-2')"
             :aria-current="active === 'map' ? 'page' : undefined"
             :class="segmentClasses(active === 'map')"
         >

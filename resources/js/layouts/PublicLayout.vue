@@ -3,11 +3,13 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import PublicBrand from '@/components/public/PublicBrand.vue';
 import PublicHeader from '@/components/public/PublicHeader.vue';
+import { usePublicViewLinks } from '@/components/public/usePublicViewLinks';
 
 const page = usePage();
+const { publicViewHref } = usePublicViewLinks();
 
 // Near & soon is a full-height map workspace; the footer only belongs on
-// document-style pages such as Discover and the future event detail.
+// document-style pages such as Discover and event detail.
 const showFooter = computed(() => !page.url.startsWith('/events-visual-2'));
 
 const footerLinkClasses =
@@ -47,11 +49,18 @@ const footerLinkClasses =
                     aria-label="Footer"
                     class="flex items-center gap-4 text-xs font-bold text-stone-600"
                 >
-                    <Link href="/" :class="footerLinkClasses">Discover</Link>
-                    <Link href="/events-visual-2" :class="footerLinkClasses">
+                    <Link :href="publicViewHref('/')" :class="footerLinkClasses"
+                        >Discover</Link
+                    >
+                    <Link
+                        :href="publicViewHref('/events-visual-2')"
+                        :class="footerLinkClasses"
+                    >
                         Near &amp; soon
                     </Link>
-                    <Link href="/login" :class="footerLinkClasses">Admin</Link>
+                    <Link href="/account" :class="footerLinkClasses"
+                        >Account</Link
+                    >
                 </nav>
             </div>
         </footer>

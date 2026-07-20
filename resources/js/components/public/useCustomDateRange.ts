@@ -1,23 +1,29 @@
+import { parseDate } from '@internationalized/date';
 import type { DateRange } from 'reka-ui';
 import { computed, ref, shallowRef, watch } from 'vue';
 import {
     customDateValue,
+    anyDateValue,
     dateFilterOptions,
     formatDateRangeLabel,
 } from '@/components/public/publicEventDisplay';
 
 /**
- * Shared presentation state for the date filter and its custom range
+ * Shared state for the URL-backed date filter and its custom range
  * panel. The range locks in automatically as soon as both ends are
- * picked; real query wiring arrives with the backend integration.
+ * picked.
  */
-export function useCustomDateRange(selectId?: string) {
-    const dateChoice = ref(dateFilterOptions[0]);
+export function useCustomDateRange(
+    selectId?: string,
+    initial?: { from: string | null; to: string | null },
+) {
+    const hasInitialRange = Boolean(initial?.from || initial?.to);
+    const dateChoice = ref(hasInitialRange ? customDateValue : anyDateValue);
     // shallowRef keeps the reka-ui calendar date class instances intact;
     // the picker always replaces the whole range object.
     const dateRange = shallowRef<DateRange>({
-        start: undefined,
-        end: undefined,
+        start: initial?.from ? parseDate(initial.from) : undefined,
+        end: initial?.to ? parseDate(initial.to) : undefined,
     });
     const rangePanelOpen = ref(false);
 
@@ -80,7 +86,7 @@ export function useCustomDateRange(selectId?: string) {
 
     function clearDateRange() {
         dateRange.value = { start: undefined, end: undefined };
-        dateChoice.value = dateFilterOptions[0];
+        dateChoice.value = anyDateValue;
     }
 
     return {
