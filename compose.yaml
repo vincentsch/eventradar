@@ -40,7 +40,7 @@ services:
     worker:
         image: 'event-visuals-sail-8.5/app'
         init: true
-        command: php artisan queue:work --sleep=1 --tries=3 --timeout=90
+        command: php artisan queue:work --sleep=1 --tries=3 --timeout=60
         environment: *app-environment
         volumes: *app-volumes
         networks:
