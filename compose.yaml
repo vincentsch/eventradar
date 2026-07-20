@@ -30,6 +30,10 @@ services:
         depends_on:
             mailpit:
                 condition: service_started
+            meilisearch:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
         healthcheck:
             test: ['CMD', 'curl', '--fail', '--silent', 'http://localhost/up']
             interval: 5s
@@ -37,10 +41,10 @@ services:
             retries: 12
             start_period: 10s
 
-    worker:
+    horizon:
         image: 'event-visuals-sail-8.5/app'
         init: true
-        command: php artisan queue:work --sleep=1 --tries=3 --timeout=60
+        command: php artisan horizon
         environment: *app-environment
         volumes: *app-volumes
         networks:
@@ -48,6 +52,9 @@ services:
         depends_on:
             laravel.test:
                 condition: service_healthy
+            redis:
+                condition: service_healthy
+        stop_signal: SIGTERM
         stop_grace_period: 30s
 
     scheduler:
@@ -71,6 +78,45 @@ services:
         networks:
             - sail
 
+    meilisearch:
+        image: 'getmeili/meilisearch:v1.44.0'
+        ports:
+            - '${FORWARD_MEILISEARCH_PORT:-17730}:7700'
+        environment:
+            MEILI_DB_PATH: '${MEILI_DB_PATH:-/meili_data/data.ms}'
+            MEILI_ENV: '${MEILI_ENV:-development}'
+            MEILI_MASTER_KEY: '${MEILISEARCH_KEY:-local-event-visuals-meilisearch-master-key}'
+            MEILI_NO_ANALYTICS: '${MEILI_NO_ANALYTICS:-true}'
+        volumes:
+            - 'sail-meilisearch:/meili_data'
+        networks:
+            - sail
+        healthcheck:
+            test: ['CMD', 'curl', '-fsS', 'http://localhost:7700/health']
+            interval: 10s
+            timeout: 5s
+            retries: 6
+            start_period: 5s
+
+    redis:
+        image: 'redis:7-alpine'
+        volumes:
+            - 'sail-redis:/data'
+        networks:
+            - sail
+        healthcheck:
+            test: ['CMD', 'redis-cli', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 6
+            start_period: 5s
+
 networks:
     sail:
         driver: bridge
+
+volumes:
+    sail-meilisearch:
+        driver: local
+    sail-redis:
+        driver: local

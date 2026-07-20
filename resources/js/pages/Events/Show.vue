@@ -14,17 +14,23 @@ interface EventDetail {
 
 const props = defineProps<{ event: EventDetail }>();
 
-const prettyPayload = computed(() => JSON.stringify(props.event.payload, null, 2));
+const prettyPayload = computed(() =>
+    JSON.stringify(props.event.payload, null, 2),
+);
 </script>
 
 <template>
     <Head :title="`Event ${event.id}`" />
 
     <div class="flex flex-col gap-4 p-4">
-        <Link href="/events" class="text-sm text-primary hover:underline">← Back to events</Link>
+        <Link href="/events" class="text-sm text-primary hover:underline"
+            >← Back to events</Link
+        >
 
         <h1 class="text-lg font-semibold">Event {{ event.id }}</h1>
 
-        <pre class="overflow-x-auto rounded-lg border p-4 text-xs">{{ prettyPayload }}</pre>
+        <pre class="overflow-x-auto rounded-lg border p-4 text-xs">{{
+            prettyPayload
+        }}</pre>
     </div>
 </template>
