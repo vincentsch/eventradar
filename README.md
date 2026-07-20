@@ -43,23 +43,11 @@ days and 24 hours before an event.
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    B[Browser] -->|Inertia pages and actions| L[Laravel]
-    L -->|canonical reads and writes| DB[(MySQL)]
-    L -->|discovery query| M[(Meilisearch)]
-    M -->|ordered event IDs| L
-    L -->|hydrate selected IDs| DB
-    L -->|queued mail work| R[(Redis)]
-    R --> H[Horizon workers]
-    H --> P[Postmark]
-    B -->|map tiles| MB[Mapbox]
-    L -->|admin and click-only geocoding| MB
-```
-
-MySQL remains the presentation truth. Meilisearch is a replaceable discovery read model that
-returns compact, ordered event IDs. Laravel then rechecks public visibility and hydrates explicit
-page-specific data from MySQL. Admin browsing never depends on the search index.
+MySQL is the canonical data store. Meilisearch is a replaceable discovery index that returns
+compact, ordered event IDs. Laravel rechecks public visibility and loads the page data for those IDs
+from MySQL, so the search index never becomes the source of event content. Admin browsing uses MySQL
+directly. Redis and Horizon process queued confirmation and reminder emails, while Mapbox provides
+map tiles and deliberate address lookup.
 
 ## Key decisions
 
