@@ -1,6 +1,6 @@
 # Local development
 
-Event Visuals runs through Laravel Sail. MySQL is the authoritative application database; SQLite
+EventRadar runs through Laravel Sail. MySQL is the authoritative application database; SQLite
 is used only by the isolated fast test suite.
 
 ## First setup
@@ -50,18 +50,6 @@ update that server deliberately instead of assuming a container restart will app
 `composer setup` installs dependencies, creates the local environment/key, and builds frontend
 assets. It intentionally does not migrate because the Docker-only `mysql` hostname is unavailable
 until Sail is running.
-
-## Legacy-data safety
-
-The ignored `database/database.sqlite` file and existing Meilisearch volume belong to the archived
-implementation. Until the MySQL replacement and search rebuild are explicitly approved for cleanup:
-
-- do not point normal application commands back at SQLite;
-- do not run `migrate:fresh` or `db:wipe` with a SQLite connection;
-- do not run `./vendor/bin/sail down -v`;
-- do not manually delete the SQLite file or Docker volumes.
-
-Normal `./vendor/bin/sail down` is safe because it leaves named volumes intact.
 
 ## Event seed profiles
 
