@@ -57,7 +57,7 @@ class DiscoverController extends Controller
                 $discovery['hydratedCount'] = 0;
             }
         } else {
-            $feedPage = $feed->page($instant, $query->cursor);
+            $feedPage = $feed->page($instant, $query->cursor, $query->includeOngoing);
             $events = $feedPage->payload();
             $scrollMetadata = $feedPage->scrollMetadata();
         }
@@ -68,7 +68,7 @@ class DiscoverController extends Controller
             // The exact database count is skipped for partial infinite-scroll
             // requests, which ask Inertia for the events prop only.
             'discovery' => fn (): array => $discovery['totalCount'] === null
-                ? [...$discovery, 'totalCount' => $feed->count($instant)]
+                ? [...$discovery, 'totalCount' => $feed->count($instant, $query->includeOngoing)]
                 : $discovery,
             'filters' => $filterOptions->all($instant),
         ]);

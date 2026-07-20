@@ -29,15 +29,28 @@ it('normalizes discovery input and sends canonical values to the provider', func
         'ends_at' => '2026-08-01 20:00:00',
         'starts_on_local' => '2026-08-01',
     ]);
+    $secondLocation = Event::factory()->published()->create([
+        'location_key' => 'fr-paris',
+        'starts_at' => '2026-08-02 18:00:00',
+        'ends_at' => '2026-08-02 20:00:00',
+        'starts_on_local' => '2026-08-02',
+    ]);
     $gateway = app(EventDiscoverySearchGateway::class);
 
-    $this->get('/?q=%20design%20&type=exhibition&location='.$location->location_key.'&from=2026-08-01&to=2026-08-31')
+    $this->get('/?'.http_build_query([
+        'q' => ' design ',
+        'type' => ['exhibition', 'workshop'],
+        'location' => [$location->location_key, $secondLocation->location_key],
+        'from' => '2026-08-01',
+        'to' => '2026-08-31',
+    ]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('Public/Discover')
             ->where('query.q', 'design')
-            ->where('query.type', 'exhibition')
-            ->where('query.location', 'de-berlin')
+            ->where('query.type', ['exhibition', 'workshop'])
+            ->where('query.location', ['de-berlin', 'fr-paris'])
+            ->where('query.ongoing', false)
             ->where('query.from', '2026-08-01')
             ->where('query.to', '2026-08-31')
             ->where('discovery.mode', 'search')
@@ -51,8 +64,8 @@ it('rejects invalid enums locations dates and continuation combinations', functi
     $this->get('/?'.$query)
         ->assertSessionHasErrors($field);
 })->with([
-    'unknown type' => ['type=party', 'type'],
-    'unknown location' => ['location=moon-base', 'location'],
+    'unknown type' => ['type=party', 'type.0'],
+    'malformed location' => ['location=moon%20base', 'location.0'],
     'malformed paired dates' => ['from=x&to=y', 'from'],
     'backwards dates' => ['from=2026-08-02&to=2026-08-01', 'to'],
     'range over ninety three days' => ['from=2026-01-01&to=2026-04-05', 'to'],
@@ -60,6 +73,19 @@ it('rejects invalid enums locations dates and continuation combinations', functi
     'cursor during discovery' => ['q=design&cursor=eyJpZCI6MX0', 'cursor'],
     'page without discovery' => ['page=2', 'page'],
 ]);
+
+it('lets a well-formed stale location degrade to an empty search', function () {
+    $gateway = app(EventDiscoverySearchGateway::class);
+
+    $this->get('/?location=moon-base')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('query.location', ['moon-base'])
+            ->where('discovery.mode', 'search'));
+
+    expect($gateway->requests[0]['filters'])
+        ->toContain('location_key IN ["moon-base"]');
+});
 
 it('treats whitespace-only discovery fields as the unfiltered feed', function () {
     $this->get('/?q=%20%20%20')

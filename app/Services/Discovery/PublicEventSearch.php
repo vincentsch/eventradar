@@ -63,12 +63,16 @@ final class PublicEventSearch
             'ends_at_timestamp > '.$instant->getTimestamp(),
         ];
 
-        if ($query->type !== null) {
-            $filters[] = 'type = '.$this->quoted($query->type);
+        if (! $query->includeOngoing) {
+            $filters[] = 'starts_at_timestamp >= '.$instant->getTimestamp();
         }
 
-        if ($query->location !== null) {
-            $filters[] = 'location_key = '.$this->quoted($query->location);
+        if ($query->types !== []) {
+            $filters[] = 'type IN '.$this->quoted($query->types);
+        }
+
+        if ($query->locations !== []) {
+            $filters[] = 'location_key IN '.$this->quoted($query->locations);
         }
 
         if ($query->from !== null) {

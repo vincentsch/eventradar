@@ -10,6 +10,7 @@ import type {
     PublicEvent,
     PublicEventCollection,
     PublicEventFilterOptions,
+    PublicEventParameters,
     PublicEventQuery,
 } from '@/types/public-events';
 
@@ -43,7 +44,7 @@ const formattedTotalCount = computed(() =>
     new Intl.NumberFormat('en-US').format(props.discovery.totalCount),
 );
 
-function applyFilters(parameters: Record<string, string>) {
+function applyFilters(parameters: PublicEventParameters) {
     const visit = ++latestFilterVisit;
 
     router.get(currentPath.value, parameters, {

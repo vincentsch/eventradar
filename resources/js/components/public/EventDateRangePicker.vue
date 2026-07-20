@@ -80,7 +80,13 @@ const navButtonClasses =
                             <RangeCalendarCellTrigger
                                 :day="weekDate"
                                 :month="month.value"
-                                class="flex size-9 items-center justify-center rounded-lg text-sm font-semibold whitespace-nowrap text-stone-800 transition-colors outline-none hover:bg-stone-900/10 focus-visible:ring-2 focus-visible:ring-stone-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-stone-900/10 data-[outside-view]:text-stone-400 data-[selected]:bg-stone-900/15 data-[selected]:data-[selection-end]:bg-stone-900 data-[selected]:data-[selection-end]:text-white data-[selected]:data-[selection-start]:bg-stone-900 data-[selected]:data-[selection-start]:text-white data-[today]:underline data-[today]:underline-offset-4"
+                                :aria-hidden="
+                                    weekDate.month !== month.value.month ||
+                                    weekDate.year !== month.value.year
+                                        ? 'true'
+                                        : undefined
+                                "
+                                class="flex size-9 items-center justify-center rounded-lg text-sm font-semibold whitespace-nowrap text-stone-800 transition-colors outline-none hover:bg-stone-900/10 focus-visible:ring-2 focus-visible:ring-stone-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-stone-900/10 data-[outside-view]:pointer-events-none data-[outside-view]:bg-transparent! data-[outside-view]:text-stone-400! data-[selected]:bg-stone-900/15 data-[selected]:data-[selection-end]:bg-stone-900 data-[selected]:data-[selection-end]:text-white data-[selected]:data-[selection-start]:bg-stone-900 data-[selected]:data-[selection-start]:text-white data-[today]:underline data-[today]:underline-offset-4"
                             />
                         </RangeCalendarCell>
                     </RangeCalendarGridRow>

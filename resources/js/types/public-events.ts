@@ -36,11 +36,14 @@ export interface PublicEvent {
 
 export interface PublicEventQuery {
     q: string | null;
-    type: string | null;
-    location: string | null;
+    type: string[];
+    location: string[];
     from: string | null;
     to: string | null;
+    ongoing: boolean;
 }
+
+export type PublicEventParameters = Record<string, string | string[]>;
 
 export interface PublicEventFilterOption {
     value: string;

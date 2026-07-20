@@ -12,11 +12,14 @@ import { useMediaQuery } from '@vueuse/core';
 import { ref } from 'vue';
 import EventDateRangePicker from '@/components/public/EventDateRangePicker.vue';
 import FilterSelect from '@/components/public/FilterSelect.vue';
+import MultiSelectFilter from '@/components/public/MultiSelectFilter.vue';
 import { customDateValue } from '@/components/public/publicEventDisplay';
+import UpcomingOnlyToggle from '@/components/public/UpcomingOnlyToggle.vue';
 import { useAutoApplyingEventFilters } from '@/components/public/useAutoApplyingEventFilters';
 import { usePublicEventFilters } from '@/components/public/usePublicEventFilters';
 import type {
     PublicEventFilterOptions,
+    PublicEventParameters,
     PublicEventQuery,
 } from '@/types/public-events';
 
@@ -29,7 +32,7 @@ const props = withDefaults(
     { processing: false },
 );
 const emit = defineEmits<{
-    apply: [parameters: Record<string, string>];
+    apply: [parameters: PublicEventParameters];
     clear: [];
 }>();
 const filtersOpen = ref(false);
@@ -37,8 +40,9 @@ const showsTwoMonths = useMediaQuery('(min-width: 640px)');
 
 const {
     searchTerm,
-    locationChoice,
-    categoryChoice,
+    locationChoices,
+    categoryChoices,
+    upcomingOnly,
     locationOptions,
     categoryOptions,
     hasFilters,
@@ -61,8 +65,9 @@ function applyFilters() {
 
 const { applyNow, resetWithoutApplying } = useAutoApplyingEventFilters({
     searchTerm,
-    locationChoice,
-    categoryChoice,
+    locationChoices,
+    categoryChoices,
+    upcomingOnly,
     dateChoice,
     dateRange,
     parameters,
@@ -136,18 +141,20 @@ defineExpose({ resetFilters });
                 :options="dateOptions"
                 :class="filtersOpen ? '' : 'hidden sm:block'"
             />
-            <FilterSelect
+            <MultiSelectFilter
                 id="discover-location"
-                v-model="locationChoice"
-                label="Location"
+                v-model="locationChoices"
+                label="Locations"
+                empty-label="Anywhere"
                 :icon="MapPin"
                 :options="locationOptions"
                 :class="filtersOpen ? '' : 'hidden sm:block'"
             />
-            <FilterSelect
+            <MultiSelectFilter
                 id="discover-category"
-                v-model="categoryChoice"
-                label="Category"
+                v-model="categoryChoices"
+                label="Categories"
+                empty-label="All categories"
                 :icon="Tag"
                 :options="categoryOptions"
                 :class="filtersOpen ? '' : 'hidden sm:block'"
@@ -205,23 +212,22 @@ defineExpose({ resetFilters });
         </div>
 
         <div
-            v-if="hasFilters || processing"
-            class="mt-2 flex flex-wrap items-center justify-end gap-2 border-t border-stone-900/10 px-1 pt-2"
+            class="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-stone-900/10 px-1 pt-2"
         >
-            <p
-                v-if="processing"
-                class="mr-auto text-xs font-semibold text-stone-500"
-            >
+            <p v-if="processing" class="text-xs font-semibold text-stone-500">
                 Updating results…
             </p>
-            <button
-                v-if="hasFilters"
-                type="button"
-                class="inline-flex h-10 items-center rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
-                @click="clearFilters"
-            >
-                Clear filters
-            </button>
+            <div class="ml-auto flex flex-wrap items-center justify-end gap-1">
+                <UpcomingOnlyToggle v-model="upcomingOnly" />
+                <button
+                    v-if="hasFilters"
+                    type="button"
+                    class="inline-flex h-10 items-center rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                    @click="clearFilters"
+                >
+                    Clear filters
+                </button>
+            </div>
         </div>
     </form>
 </template>

@@ -4,12 +4,17 @@ namespace App\Services\Discovery;
 
 final readonly class PublicEventQuery
 {
+    /**
+     * @param  list<string>  $types
+     * @param  list<string>  $locations
+     */
     public function __construct(
         public ?string $search,
-        public ?string $type,
-        public ?string $location,
+        public array $types,
+        public array $locations,
         public ?string $from,
         public ?string $to,
+        public bool $includeOngoing,
         public ?string $cursor,
         public int $page,
     ) {}
@@ -17,21 +22,22 @@ final readonly class PublicEventQuery
     public function hasDiscovery(): bool
     {
         return $this->search !== null
-            || $this->type !== null
-            || $this->location !== null
+            || $this->types !== []
+            || $this->locations !== []
             || $this->from !== null
             || $this->to !== null;
     }
 
-    /** @return array{q: ?string, type: ?string, location: ?string, from: ?string, to: ?string} */
+    /** @return array{q: ?string, type: list<string>, location: list<string>, from: ?string, to: ?string, ongoing: bool} */
     public function canonical(): array
     {
         return [
             'q' => $this->search,
-            'type' => $this->type,
-            'location' => $this->location,
+            'type' => $this->types,
+            'location' => $this->locations,
             'from' => $this->from,
             'to' => $this->to,
+            'ongoing' => $this->includeOngoing,
         ];
     }
 }

@@ -60,7 +60,11 @@ it('includes ongoing events and applies the exact exclusive end boundary', funct
         'starts_on_local' => $instant->subHours(2)->toDateString(),
     ]);
 
-    $events = app(PublicEventFeed::class)->page($instant, null)->events;
+    $feed = app(PublicEventFeed::class);
+    $events = $feed->page($instant, null, includeOngoing: true)->events;
 
     expect(collect($events)->pluck('id')->all())->toBe([$ongoing->id]);
+    expect($feed->page($instant, null)->events)->toBe([])
+        ->and($feed->count($instant))->toBe(0)
+        ->and($feed->count($instant, includeOngoing: true))->toBe(1);
 });

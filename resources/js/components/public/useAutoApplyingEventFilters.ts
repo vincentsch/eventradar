@@ -3,14 +3,16 @@ import type { DateRange } from 'reka-ui';
 import type { Ref, ShallowRef } from 'vue';
 import { onBeforeUnmount, watch } from 'vue';
 import { customDateValue } from '@/components/public/publicEventDisplay';
+import type { PublicEventParameters } from '@/types/public-events';
 
 interface AutoApplyingEventFilters {
     searchTerm: Ref<string>;
-    locationChoice: Ref<string>;
-    categoryChoice: Ref<string>;
+    locationChoices: Ref<string[]>;
+    categoryChoices: Ref<string[]>;
+    upcomingOnly: Ref<boolean>;
     dateChoice: Ref<string>;
     dateRange: ShallowRef<DateRange>;
-    parameters: () => Record<string, string>;
+    parameters: () => PublicEventParameters;
     apply: () => void;
 }
 
@@ -21,8 +23,9 @@ interface AutoApplyingEventFilters {
  */
 export function useAutoApplyingEventFilters({
     searchTerm,
-    locationChoice,
-    categoryChoice,
+    locationChoices,
+    categoryChoices,
+    upcomingOnly,
     dateChoice,
     dateRange,
     parameters,
@@ -68,7 +71,9 @@ export function useAutoApplyingEventFilters({
     }
 
     watch(searchTerm, queueSearch, { flush: 'sync' });
-    watch([locationChoice, categoryChoice], applyNow, { flush: 'sync' });
+    watch([locationChoices, categoryChoices, upcomingOnly], applyNow, {
+        flush: 'sync',
+    });
     watch(
         dateChoice,
         (choice) => {
@@ -105,8 +110,16 @@ export function useAutoApplyingEventFilters({
     return { applyNow, cancelPendingSearch, resetWithoutApplying };
 }
 
-function serialize(parameters: Record<string, string>): string {
-    return new URLSearchParams(parameters).toString();
+function serialize(parameters: PublicEventParameters): string {
+    const serialized = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(parameters)) {
+        for (const item of Array.isArray(value) ? value : [value]) {
+            serialized.append(key, item);
+        }
+    }
+
+    return serialized.toString();
 }
 
 function isDateValue(value: DateValue | undefined): value is DateValue {

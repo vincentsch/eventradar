@@ -57,7 +57,7 @@ it('hydrates bounded map results in provider order with anti-meridian viewport f
         'south' => -40,
         'west' => 170,
         'east' => -170,
-        'type' => 'meetup',
+        'type' => ['meetup', 'concert'],
     ]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
@@ -70,13 +70,30 @@ it('hydrates bounded map results in provider order with anti-meridian viewport f
             ->where('discovery.totalCountIsCapped', false)
             ->where('discovery.hydratedCount', 2)
             ->where('discovery.limit', 200)
+            ->where('query.type', ['meetup', 'concert'])
             ->where('query.west', 170)
             ->where('query.east', -170));
 
     $viewportFilter = collect($gateway->filters)->first(fn ($filter) => is_array($filter));
     expect($viewportFilter)->toHaveCount(2)
+        ->and($gateway->filters)->toContain(
+            'starts_at_timestamp >= '.Date::now('UTC')->getTimestamp(),
+            'type IN ["meetup","concert"]',
+        )
         ->and($viewportFilter[0])->toBe('_geoBoundingBox([60.0000000, 180.0000000], [-40.0000000, 170.0000000])')
         ->and($viewportFilter[1])->toBe('_geoBoundingBox([60.0000000, -170.0000000], [-40.0000000, -180.0000000])');
+});
+
+it('can include events already in progress on the map', function () {
+    $gateway = new FakeEventDiscoverySearchGateway;
+    app()->instance(EventDiscoverySearchGateway::class, $gateway);
+
+    $this->get('/events-visual-2?ongoing=1')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('query.ongoing', true));
+
+    expect($gateway->requests[0]['filters'])
+        ->not->toContain('starts_at_timestamp >= '.Date::now('UTC')->getTimestamp());
 });
 
 it('rejects incomplete or inverted map bounds', function () {

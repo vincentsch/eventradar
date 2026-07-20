@@ -18,7 +18,7 @@ final class PublicEventMapSearch
     ) {}
 
     /**
-     * @param  array{q: ?string, type: ?string, location: ?string, from: ?string, to: ?string, north: ?float, south: ?float, east: ?float, west: ?float}  $criteria
+     * @param  array{q: ?string, type: list<string>, location: list<string>, from: ?string, to: ?string, ongoing: bool, north: ?float, south: ?float, east: ?float, west: ?float}  $criteria
      * @return array{events: list<array<string, mixed>>, provider_count: int, processing_time_ms: int}
      */
     public function search(array $criteria, CarbonImmutable $instant): array
@@ -39,7 +39,7 @@ final class PublicEventMapSearch
     }
 
     /**
-     * @param  array{q: ?string, type: ?string, location: ?string, from: ?string, to: ?string, north: ?float, south: ?float, east: ?float, west: ?float}  $criteria
+     * @param  array{q: ?string, type: list<string>, location: list<string>, from: ?string, to: ?string, ongoing: bool, north: ?float, south: ?float, east: ?float, west: ?float}  $criteria
      * @return list<string|list<string>>
      */
     private function filters(array $criteria, CarbonImmutable $instant): array
@@ -49,10 +49,14 @@ final class PublicEventMapSearch
             'ends_at_timestamp > '.$instant->getTimestamp(),
         ];
 
+        if (! $criteria['ongoing']) {
+            $filters[] = 'starts_at_timestamp >= '.$instant->getTimestamp();
+        }
+
         foreach (['type', 'location'] as $key) {
-            if ($criteria[$key] !== null) {
+            if ($criteria[$key] !== []) {
                 $attribute = $key === 'location' ? 'location_key' : $key;
-                $filters[] = $attribute.' = '.$this->quoted($criteria[$key]);
+                $filters[] = $attribute.' IN '.$this->quoted($criteria[$key]);
             }
         }
 

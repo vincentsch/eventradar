@@ -33,10 +33,11 @@ it('builds safe visibility filters and hydrates canonical rows in provider order
     $service = new PublicEventSearch($gateway, new PublicEventVisibility, new PublicEventData);
     $query = new PublicEventQuery(
         search: 'design',
-        type: 'exhibition',
-        location: 'de-berlin',
+        types: ['exhibition', 'workshop'],
+        locations: ['de-berlin', 'fr-paris'],
         from: '2026-08-01',
         to: '2026-08-31',
+        includeOngoing: false,
         cursor: null,
         page: 2,
     );
@@ -52,8 +53,9 @@ it('builds safe visibility filters and hydrates canonical rows in provider order
     ])->and($request['filters'])->toContain(
         'status IN ["published","sold_out"]',
         'ends_at_timestamp > '.$instant->getTimestamp(),
-        'type = "exhibition"',
-        'location_key = "de-berlin"',
+        'starts_at_timestamp >= '.$instant->getTimestamp(),
+        'type IN ["exhibition","workshop"]',
+        'location_key IN ["de-berlin","fr-paris"]',
         'starts_on_local_number >= 20260801',
         'starts_on_local_number <= 20260831',
     )->and(collect($result['paginator']->items())->pluck('id')->all())->toBe([$first->id, $second->id])
@@ -63,19 +65,23 @@ it('builds safe visibility filters and hydrates canonical rows in provider order
 });
 
 it('quotes exact filter values containing quotes and backslashes', function () {
+    $instant = CarbonImmutable::parse('2026-07-20 12:00:00', 'UTC');
     $gateway = new FakeEventDiscoverySearchGateway;
     $service = new PublicEventSearch($gateway, new PublicEventVisibility, new PublicEventData);
     $query = new PublicEventQuery(
         search: null,
-        type: null,
-        location: 'de-"quoted\\place',
+        types: [],
+        locations: ['de-"quoted\\place'],
         from: null,
         to: null,
+        includeOngoing: true,
         cursor: null,
         page: 1,
     );
 
-    $service->page($query, CarbonImmutable::parse('2026-07-20 12:00:00', 'UTC'), '/');
+    $service->page($query, $instant, '/');
 
-    expect($gateway->requests[0]['filters'])->toContain('location_key = "de-\\"quoted\\\\place"');
+    expect($gateway->requests[0]['filters'])
+        ->toContain('location_key IN ["de-\\"quoted\\\\place"]')
+        ->not->toContain('starts_at_timestamp >= '.$instant->getTimestamp());
 });

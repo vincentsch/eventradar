@@ -84,6 +84,33 @@ it('accepts its own next cursor through the public request boundary', function (
             ->has('events.data', 1));
 });
 
+it('defaults to upcoming events and can include events already in progress', function () {
+    $ongoing = Event::factory()->published()->create([
+        'starts_at' => Date::now('UTC')->subHours(2),
+        'ends_at' => Date::now('UTC')->addHour(),
+        'starts_on_local' => Date::now('UTC')->subHours(2)->toDateString(),
+    ]);
+    $future = Event::factory()->published()->create([
+        'starts_at' => Date::now('UTC')->addHour(),
+        'ends_at' => Date::now('UTC')->addHours(3),
+        'starts_on_local' => Date::now('UTC')->addHour()->toDateString(),
+    ]);
+
+    $this->get('/')
+        ->assertInertia(fn ($page) => $page
+            ->where('query.ongoing', false)
+            ->where('events.data.0.id', $future->id)
+            ->where('discovery.totalCount', 1));
+
+    $this->get('/?ongoing=1')
+        ->assertInertia(fn ($page) => $page
+            ->where('query.ongoing', true)
+            ->where('events.data.0.id', $ongoing->id)
+            ->where('events.data.1.id', $future->id)
+            ->where('discovery.mode', 'feed')
+            ->where('discovery.totalCount', 2));
+});
+
 it('hydrates a successful search response through the public route', function () {
     $event = Event::factory()->published()->create([
         'starts_at' => '2026-08-01 18:00:00',

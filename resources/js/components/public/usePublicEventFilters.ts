@@ -7,6 +7,7 @@ import {
 import { useCustomDateRange } from '@/components/public/useCustomDateRange';
 import type {
     PublicEventFilterOptions,
+    PublicEventParameters,
     PublicEventQuery,
 } from '@/types/public-events';
 
@@ -16,40 +17,40 @@ export function usePublicEventFilters(
     dateSelectId: string,
 ) {
     const searchTerm = ref(query.q ?? '');
-    const locationChoice = ref(query.location ?? '');
-    const categoryChoice = ref(query.type ?? '');
+    const locationChoices = ref([...query.location]);
+    const categoryChoices = ref([...query.type]);
+    const upcomingOnly = ref(!query.ongoing);
     const date = useCustomDateRange(dateSelectId, query);
 
-    const locationOptions = computed(() => [
-        { value: '', label: 'Anywhere' },
-        ...filters.locations,
-    ]);
-    const categoryOptions = computed(() => [
-        { value: '', label: 'All categories' },
-        ...filters.types,
-    ]);
+    const locationOptions = computed(() => filters.locations);
+    const categoryOptions = computed(() => filters.types);
     const hasFilters = computed(
         () =>
             searchTerm.value.trim() !== '' ||
-            locationChoice.value !== '' ||
-            categoryChoice.value !== '' ||
+            locationChoices.value.length > 0 ||
+            categoryChoices.value.length > 0 ||
+            !upcomingOnly.value ||
             date.dateChoice.value !== anyDateValue,
     );
 
-    function parameters(): Record<string, string> {
-        const parameters: Record<string, string> = {};
+    function parameters(): PublicEventParameters {
+        const parameters: PublicEventParameters = {};
         const search = searchTerm.value.trim();
 
         if (search !== '') {
             parameters.q = search;
         }
 
-        if (locationChoice.value !== '') {
-            parameters.location = locationChoice.value;
+        if (locationChoices.value.length > 0) {
+            parameters.location = locationChoices.value;
         }
 
-        if (categoryChoice.value !== '') {
-            parameters.type = categoryChoice.value;
+        if (categoryChoices.value.length > 0) {
+            parameters.type = categoryChoices.value;
+        }
+
+        if (!upcomingOnly.value) {
+            parameters.ongoing = '1';
         }
 
         Object.assign(parameters, dateParameters());
@@ -59,8 +60,9 @@ export function usePublicEventFilters(
 
     function reset(): void {
         searchTerm.value = '';
-        locationChoice.value = '';
-        categoryChoice.value = '';
+        locationChoices.value = [];
+        categoryChoices.value = [];
+        upcomingOnly.value = true;
         date.clearDateRange();
     }
 
@@ -116,8 +118,9 @@ export function usePublicEventFilters(
     return {
         ...date,
         searchTerm,
-        locationChoice,
-        categoryChoice,
+        locationChoices,
+        categoryChoices,
+        upcomingOnly,
         locationOptions,
         categoryOptions,
         hasFilters,

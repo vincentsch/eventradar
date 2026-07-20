@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Public;
 
 use App\Domain\Events\EventType;
-use App\Services\Discovery\PublicEventFilterOptions;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,14 +20,17 @@ class NearAndSoonRequest extends FormRequest
     }
 
     /** @return array<string, list<mixed>> */
-    public function rules(PublicEventFilterOptions $filters): array
+    public function rules(): array
     {
         return [
             'q' => ['nullable', 'string', 'max:100', $this->validUtf8()],
-            'type' => ['nullable', Rule::enum(EventType::class)],
-            'location' => ['nullable', 'string', 'max:64', Rule::in($filters->locationKeys($this->instant()))],
+            'type' => ['nullable', 'array', 'max:8'],
+            'type.*' => [Rule::enum(EventType::class)],
+            'location' => ['nullable', 'array', 'max:50'],
+            'location.*' => ['string', 'max:64', 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/'],
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d'],
+            'ongoing' => ['nullable', 'boolean'],
             'north' => ['nullable', 'numeric', 'between:-90,90', 'required_with:south,east,west'],
             'south' => ['nullable', 'numeric', 'between:-90,90', 'required_with:north,east,west'],
             'east' => ['nullable', 'numeric', 'between:-180,180', 'required_with:north,south,west'],
@@ -65,17 +67,18 @@ class NearAndSoonRequest extends FormRequest
         }];
     }
 
-    /** @return array{q: ?string, type: ?string, location: ?string, from: ?string, to: ?string, north: ?float, south: ?float, east: ?float, west: ?float} */
+    /** @return array{q: ?string, type: list<string>, location: list<string>, from: ?string, to: ?string, ongoing: bool, north: ?float, south: ?float, east: ?float, west: ?float} */
     public function criteria(): array
     {
         $validated = $this->validated();
 
         return [
             'q' => $validated['q'] ?? null,
-            'type' => $validated['type'] ?? null,
-            'location' => $validated['location'] ?? null,
+            'type' => array_values($validated['type'] ?? []),
+            'location' => array_values($validated['location'] ?? []),
             'from' => $validated['from'] ?? null,
             'to' => $validated['to'] ?? null,
+            'ongoing' => $this->boolean('ongoing'),
             'north' => isset($validated['north']) ? (float) $validated['north'] : null,
             'south' => isset($validated['south']) ? (float) $validated['south'] : null,
             'east' => isset($validated['east']) ? (float) $validated['east'] : null,
@@ -91,11 +94,24 @@ class NearAndSoonRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $normalized = [];
-        foreach (['q', 'type', 'location', 'from', 'to', 'north', 'south', 'east', 'west'] as $key) {
+        foreach (['q', 'from', 'to', 'north', 'south', 'east', 'west'] as $key) {
             $value = $this->input($key);
             if (is_string($value)) {
                 $value = trim($value);
                 $normalized[$key] = $value === '' ? null : $value;
+            }
+        }
+        foreach (['type', 'location'] as $key) {
+            $value = $this->input($key);
+
+            if (is_string($value)) {
+                $trimmed = trim($value);
+                $normalized[$key] = $trimmed === '' ? [] : [$trimmed];
+            } elseif (is_array($value)) {
+                $normalized[$key] = array_values(array_unique(array_map(
+                    fn (mixed $item): mixed => is_string($item) ? trim($item) : $item,
+                    $value,
+                ), SORT_REGULAR));
             }
         }
         $this->merge($normalized);

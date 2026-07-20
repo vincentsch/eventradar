@@ -15,8 +15,11 @@ final class PublicEventFeed
         private readonly PublicEventData $data,
     ) {}
 
-    public function page(CarbonImmutable $instant, ?string $encodedCursor): PublicEventFeedPage
-    {
+    public function page(
+        CarbonImmutable $instant,
+        ?string $encodedCursor,
+        bool $includeOngoing = false,
+    ): PublicEventFeedPage {
         $query = Event::query()
             ->select(PublicEventData::SOURCE_COLUMNS)
             ->with([
@@ -27,6 +30,9 @@ final class PublicEventFeed
             ]);
 
         $this->visibility->apply($query, $instant, useCursorAccessPath: true);
+        if (! $includeOngoing) {
+            $query->where('starts_at', '>=', $instant);
+        }
 
         $paginator = $query
             ->orderBy('starts_at')
@@ -52,10 +58,13 @@ final class PublicEventFeed
         );
     }
 
-    public function count(CarbonImmutable $instant): int
+    public function count(CarbonImmutable $instant, bool $includeOngoing = false): int
     {
         $query = Event::query();
         $this->visibility->apply($query, $instant, useCursorAccessPath: true);
+        if (! $includeOngoing) {
+            $query->where('starts_at', '>=', $instant);
+        }
 
         return $query->count();
     }

@@ -16,11 +16,13 @@ import EventDateRangePicker from '@/components/public/EventDateRangePicker.vue';
 import EventDetailModal from '@/components/public/EventDetailModal.vue';
 import EventMap from '@/components/public/EventMap.vue';
 import FilterSelect from '@/components/public/FilterSelect.vue';
+import MultiSelectFilter from '@/components/public/MultiSelectFilter.vue';
 import {
     customDateValue,
     eventDateParts,
     eventWeekday,
 } from '@/components/public/publicEventDisplay';
+import UpcomingOnlyToggle from '@/components/public/UpcomingOnlyToggle.vue';
 import { useAutoApplyingEventFilters } from '@/components/public/useAutoApplyingEventFilters';
 import { usePublicEventFilters } from '@/components/public/usePublicEventFilters';
 import ViewNavigation from '@/components/public/ViewNavigation.vue';
@@ -28,6 +30,7 @@ import type {
     MapBounds,
     PublicEvent,
     PublicEventFilterOptions,
+    PublicEventParameters,
     PublicEventQuery,
 } from '@/types/public-events';
 
@@ -62,8 +65,9 @@ const currentBounds = ref<MapBounds | null>(boundsFromQuery(props.query));
 const initialBounds = boundsFromQuery(props.query);
 const {
     searchTerm,
-    locationChoice,
-    categoryChoice,
+    locationChoices,
+    categoryChoices,
+    upcomingOnly,
     locationOptions,
     categoryOptions,
     hasFilters,
@@ -176,8 +180,9 @@ function applyFilters() {
 const { applyNow, cancelPendingSearch, resetWithoutApplying } =
     useAutoApplyingEventFilters({
         searchTerm,
-        locationChoice,
-        categoryChoice,
+        locationChoices,
+        categoryChoices,
+        upcomingOnly,
         dateChoice,
         dateRange,
         parameters,
@@ -191,7 +196,7 @@ function clearFilters() {
 
 function requestEvents(
     bounds: MapBounds | null,
-    filterParameters: Record<string, string> = parameters(),
+    filterParameters: PublicEventParameters = parameters(),
 ) {
     cancelPendingSearch();
     const request = ++latestRequest;
@@ -307,6 +312,7 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
                         </div>
                         <button
                             type="button"
+                            aria-label="Filters"
                             :aria-expanded="filtersOpen"
                             class="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-stone-800 shadow-sm ring-1 shadow-stone-900/5 ring-stone-900/10 transition-colors hover:text-stone-950 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                             @click="filtersOpen = !filtersOpen"
@@ -336,19 +342,23 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
                             :options="dateOptions"
                             class="sm:col-span-2"
                         />
-                        <FilterSelect
+                        <MultiSelectFilter
                             id="near-soon-location"
-                            v-model="locationChoice"
-                            label="Location"
+                            v-model="locationChoices"
+                            label="Locations"
+                            empty-label="Anywhere"
                             :icon="MapPin"
                             :options="locationOptions"
+                            surface="white"
                         />
-                        <FilterSelect
+                        <MultiSelectFilter
                             id="near-soon-category"
-                            v-model="categoryChoice"
-                            label="Category"
+                            v-model="categoryChoices"
+                            label="Categories"
+                            empty-label="All categories"
                             :icon="Tag"
                             :options="categoryOptions"
+                            surface="white"
                         />
                         <div
                             v-if="rangePanelOpen"
@@ -403,10 +413,11 @@ function boundsFromQuery(query: NearAndSoonQuery): MapBounds | null {
                             </button>
                         </div>
                         <div
-                            v-if="hasFilters"
-                            class="flex justify-end border-t border-stone-900/10 pt-2 sm:col-span-2"
+                            class="flex flex-wrap items-center justify-between gap-2 border-t border-stone-900/10 pt-2 sm:col-span-2"
                         >
+                            <UpcomingOnlyToggle v-model="upcomingOnly" />
                             <button
+                                v-if="hasFilters"
                                 type="button"
                                 class="h-9 rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                                 @click="clearFilters"
