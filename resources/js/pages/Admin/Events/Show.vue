@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { Pencil, Trash2 } from '@lucide/vue';
+import {
+    ArrowLeft,
+    CalendarDays,
+    ExternalLink,
+    MapPin,
+    Pencil,
+    Trash2,
+    Users,
+} from '@lucide/vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,37 +82,71 @@ const location = [
 ]
     .filter(Boolean)
     .join(', ');
+
+function confirmDraftDeletion(clickEvent: MouseEvent) {
+    if (!window.confirm('Permanently delete this draft event?')) {
+        clickEvent.preventDefault();
+    }
+}
 </script>
 
 <template>
     <Head :title="`Inspect ${event.title}`" />
 
     <div class="flex flex-1 flex-col gap-6 p-4 md:p-6">
-        <header class="space-y-3">
+        <header class="space-y-4">
             <Link
                 href="/admin/events"
-                class="text-sm font-medium text-primary hover:underline"
+                class="inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
-                ← Back to all events
+                <ArrowLeft class="size-4" aria-hidden="true" />
+                Back to all events
             </Link>
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="flex gap-2">
-                    <Badge>{{ event.status }}</Badge>
-                    <Badge variant="outline">{{ event.type }}</Badge>
+            <div
+                class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
+            >
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Badge class="capitalize">
+                            {{ event.status.replace('_', ' ') }}
+                        </Badge>
+                        <Badge variant="outline" class="capitalize">
+                            {{ event.type }}
+                        </Badge>
+                    </div>
+                    <h1
+                        class="mt-2 text-2xl font-semibold tracking-tight text-balance"
+                    >
+                        {{ event.title }}
+                    </h1>
+                    <div
+                        class="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted-foreground"
+                    >
+                        <span class="inline-flex items-center gap-1.5">
+                            <CalendarDays class="size-4" aria-hidden="true" />
+                            {{ formatDateTime(event.starts_at) }}
+                        </span>
+                        <span class="inline-flex items-center gap-1.5">
+                            <MapPin class="size-4" aria-hidden="true" />
+                            {{ event.locality }}, {{ event.country }}
+                        </span>
+                    </div>
+                    <p class="mt-2 font-mono text-xs text-muted-foreground">
+                        {{ event.id }}
+                    </p>
                 </div>
-                <Button as-child variant="outline"
-                    ><Link :href="`/admin/events/${event.id}/edit`"
-                        ><Pencil class="size-4" /> Edit event</Link
-                    ></Button
-                >
-            </div>
-            <div>
-                <h1 class="text-2xl font-semibold tracking-tight">
-                    {{ event.title }}
-                </h1>
-                <p class="mt-1 font-mono text-xs text-muted-foreground">
-                    {{ event.id }}
-                </p>
+                <div class="flex shrink-0 flex-wrap items-center gap-2">
+                    <Button as-child variant="outline">
+                        <Link :href="`/events/${event.id}`">
+                            <ExternalLink class="size-4" /> Public page
+                        </Link>
+                    </Button>
+                    <Button as-child>
+                        <Link :href="`/admin/events/${event.id}/edit`">
+                            <Pencil class="size-4" /> Edit event
+                        </Link>
+                    </Button>
+                </div>
             </div>
         </header>
 
@@ -214,9 +256,16 @@ const location = [
                     </CardContent>
                 </Card>
 
-                <Card v-if="event.status === 'draft' && attendance.total === 0">
+                <Card
+                    v-if="event.status === 'draft' && attendance.total === 0"
+                    class="border-destructive/40"
+                >
                     <CardHeader><CardTitle>Danger zone</CardTitle></CardHeader>
-                    <CardContent>
+                    <CardContent class="space-y-3">
+                        <p class="text-sm text-muted-foreground">
+                            This draft has no attendance and can be removed
+                            permanently.
+                        </p>
                         <Form
                             :action="`/admin/events/${event.id}`"
                             method="delete"
@@ -226,11 +275,7 @@ const location = [
                                 type="submit"
                                 variant="destructive"
                                 :disabled="processing"
-                                onclick="
-                                    return confirm(
-                                        'Permanently delete this draft event?',
-                                    );
-                                "
+                                @click="confirmDraftDeletion"
                             >
                                 <Trash2 class="size-4" /> Delete draft
                             </Button>
@@ -318,12 +363,11 @@ const location = [
                                 </p>
                             </div>
                         </div>
-                        <Link
-                            :href="`/admin/events/${event.id}/attendees`"
-                            class="inline-flex text-sm font-medium text-primary hover:underline"
-                        >
-                            View attendee list
-                        </Link>
+                        <Button as-child variant="outline" class="w-full">
+                            <Link :href="`/admin/events/${event.id}/attendees`">
+                                <Users class="size-4" /> View attendee list
+                            </Link>
+                        </Button>
                     </CardContent>
                 </Card>
 

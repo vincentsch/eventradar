@@ -13,17 +13,48 @@ defineProps<Props>();
 </script>
 
 <template>
+    <!-- EventRadar mark; inverts with the admin dark mode. -->
     <svg
         xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 40 42"
+        viewBox="0 0 36 36"
         :class="className"
         v-bind="$attrs"
     >
         <path
-            fill="currentColor"
-            fill-rule="evenodd"
-            clip-rule="evenodd"
-            d="M17.2 5.633 8.6.855 0 5.633v26.51l16.2 9 16.2-9v-8.442l7.6-4.223V9.856l-8.6-4.777-8.6 4.777V18.3l-5.6 3.111V5.633ZM38 18.301l-5.6 3.11v-6.157l5.6-3.11V18.3Zm-1.06-7.856-5.54 3.078-5.54-3.079 5.54-3.078 5.54 3.079ZM24.8 18.3v-6.157l5.6 3.111v6.158L24.8 18.3Zm-1 1.732 5.54 3.078-13.14 7.302-5.54-3.078 13.14-7.3v-.002Zm-16.2 7.89 7.6 4.222V38.3L2 30.966V7.92l5.6 3.111v16.892ZM8.6 9.3 3.06 6.222 8.6 3.143l5.54 3.08L8.6 9.3Zm21.8 15.51-13.2 7.334V38.3l13.2-7.334v-6.156ZM9.6 11.034l5.6-3.11v14.6l-5.6 3.11v-14.6Z"
+            d="M18 2 A16 16 0 0 1 34 18 A16 16 0 0 1 18 34 H6 A4 4 0 0 1 2 30 V18 A16 16 0 0 1 18 2 Z"
+            class="fill-stone-900 dark:fill-stone-100"
+        />
+        <circle
+            cx="18"
+            cy="18"
+            r="10.5"
+            fill="none"
+            stroke-width="1.8"
+            class="stroke-white/90 dark:stroke-stone-900/90"
+        />
+        <circle
+            cx="18"
+            cy="18"
+            r="5.75"
+            fill="none"
+            stroke-width="1.5"
+            class="stroke-white/40 dark:stroke-stone-900/40"
+        />
+        <path
+            d="M18 18 L18 7.5 A10.5 10.5 0 0 1 25.42 10.58 Z"
+            class="fill-orange-500/40"
+        />
+        <path
+            d="M18 18 L25.42 10.58"
+            stroke-width="2"
+            stroke-linecap="round"
+            class="stroke-orange-500"
+        />
+        <circle
+            cx="18"
+            cy="18"
+            r="1.9"
+            class="fill-white dark:fill-stone-900"
         />
     </svg>
 </template>

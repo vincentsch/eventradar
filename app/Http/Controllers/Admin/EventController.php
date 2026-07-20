@@ -79,6 +79,14 @@ class EventController extends Controller
 
                 $query->where('title', 'like', $filters['q'].'%');
             })
+            // With a local-date filter, leading the sort with the filtered
+            // column lets MySQL serve the range and the order from
+            // events_admin_local_date_index instead of scanning the whole
+            // catalogue backwards along starts_at.
+            ->when(
+                $filters['from'] !== null || $filters['to'] !== null,
+                fn (Builder $query) => $query->orderByDesc('starts_on_local'),
+            )
             ->orderByDesc('starts_at')
             ->orderByDesc('id')
             ->paginate(self::PER_PAGE)

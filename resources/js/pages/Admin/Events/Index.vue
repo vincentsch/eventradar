@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Plus, Search, X } from '@lucide/vue';
-import { reactive } from 'vue';
+import { Plus, X } from '@lucide/vue';
+import { watchDebounced } from '@vueuse/core';
+import { reactive, watch } from 'vue';
+import AdminDateRangePicker from '@/components/admin/AdminDateRangePicker.vue';
 import IndexPagination from '@/components/admin/IndexPagination.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -72,6 +74,19 @@ function applyFilters() {
     });
 }
 
+// Filters apply themselves: selects and dates immediately, the search box
+// after a short pause while typing.
+watch(
+    () => [form.status, form.type, form.country_code, form.from, form.to],
+    applyFilters,
+);
+watchDebounced(() => form.q, applyFilters, { debounce: 350 });
+
+function onDateRange(value: { from: string | null; to: string | null }) {
+    form.from = value.from ?? '';
+    form.to = value.to ?? '';
+}
+
 function clearFilters() {
     Object.assign(form, {
         q: '',
@@ -81,7 +96,10 @@ function clearFilters() {
         from: '',
         to: '',
     });
-    router.get('/admin/events', {}, { replace: true });
+}
+
+function openEvent(id: string) {
+    router.visit(`/admin/events/${id}`);
 }
 
 const statusVariant = (status: string) => {
@@ -203,25 +221,28 @@ const formatStart = (event: EventRow) =>
                     </option>
                 </select>
             </label>
-            <label class="space-y-1.5">
-                <span class="text-xs font-medium text-muted-foreground"
-                    >Local date from</span
+            <div class="space-y-1.5 lg:col-span-2">
+                <span class="text-xs font-medium text-muted-foreground">
+                    Local dates
+                </span>
+                <AdminDateRangePicker
+                    :from="form.from || null"
+                    :to="form.to || null"
+                    @change="onDateRange"
+                />
+            </div>
+            <div class="flex items-center justify-between gap-3 lg:col-span-4">
+                <p class="text-xs text-muted-foreground">
+                    Filters apply automatically.
+                </p>
+                <Button
+                    type="button"
+                    variant="outline"
+                    class="cursor-pointer"
+                    @click="clearFilters"
                 >
-                <Input v-model="form.from" name="from" type="date" />
-            </label>
-            <label class="space-y-1.5">
-                <span class="text-xs font-medium text-muted-foreground"
-                    >Local date to</span
-                >
-                <Input v-model="form.to" name="to" type="date" />
-            </label>
-            <div class="flex items-end gap-2 lg:col-span-4 lg:justify-end">
-                <Button type="button" variant="outline" @click="clearFilters">
-                    <X class="size-4" /> Clear
+                    <X class="size-4" /> Clear filters
                 </Button>
-                <Button type="submit"
-                    ><Search class="size-4" /> Apply filters</Button
-                >
             </div>
         </form>
 
@@ -244,7 +265,8 @@ const formatStart = (event: EventRow) =>
                         <tr
                             v-for="event in events.data"
                             :key="event.id"
-                            class="border-b last:border-0"
+                            class="cursor-pointer border-b transition-colors last:border-0 hover:bg-muted/50"
+                            @click="openEvent(event.id)"
                         >
                             <td class="px-4 py-3">
                                 <p class="font-medium">{{ event.title }}</p>
@@ -271,7 +293,8 @@ const formatStart = (event: EventRow) =>
                             <td class="px-4 py-3 text-right">
                                 <Link
                                     :href="`/admin/events/${event.id}`"
-                                    class="font-medium text-primary hover:underline"
+                                    class="rounded-sm font-medium text-primary hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                    @click.stop
                                 >
                                     Inspect
                                 </Link>
