@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
+import { Pencil, Trash2 } from '@lucide/vue';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface EventImage {
@@ -17,6 +19,8 @@ interface AdminEvent {
     description: string;
     organizer_name: string;
     venue_name: string;
+    formatted_address: string | null;
+    address_line_1: string | null;
     starts_at: string;
     ends_at: string;
     timezone: string;
@@ -24,6 +28,7 @@ interface AdminEvent {
     location_key: string;
     locality: string;
     region: string | null;
+    postal_code: string | null;
     country: string;
     country_code: string;
     latitude: number | null;
@@ -82,9 +87,16 @@ const location = [
             >
                 ← Back to all events
             </Link>
-            <div class="flex flex-wrap items-center gap-2">
-                <Badge>{{ event.status }}</Badge>
-                <Badge variant="outline">{{ event.type }}</Badge>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex gap-2">
+                    <Badge>{{ event.status }}</Badge>
+                    <Badge variant="outline">{{ event.type }}</Badge>
+                </div>
+                <Button as-child variant="outline"
+                    ><Link :href="`/admin/events/${event.id}/edit`"
+                        ><Pencil class="size-4" /> Edit event</Link
+                    ></Button
+                >
             </div>
             <div>
                 <h1 class="text-2xl font-semibold tracking-tight">
@@ -134,6 +146,12 @@ const location = [
                                     Location
                                 </dt>
                                 <dd class="mt-1 text-sm">{{ location }}</dd>
+                                <dd
+                                    v-if="event.formatted_address"
+                                    class="mt-1 text-xs text-muted-foreground"
+                                >
+                                    {{ event.formatted_address }}
+                                </dd>
                             </div>
                             <div>
                                 <dt
@@ -177,7 +195,7 @@ const location = [
                     <CardContent class="grid gap-4 sm:grid-cols-2">
                         <figure
                             v-for="image in event.images"
-                            :key="image.role"
+                            :key="image.path"
                             class="space-y-2"
                         >
                             <img
@@ -193,6 +211,30 @@ const location = [
                                 }}
                             </figcaption>
                         </figure>
+                    </CardContent>
+                </Card>
+
+                <Card v-if="event.status === 'draft' && attendance.total === 0">
+                    <CardHeader><CardTitle>Danger zone</CardTitle></CardHeader>
+                    <CardContent>
+                        <Form
+                            :action="`/admin/events/${event.id}`"
+                            method="delete"
+                            #default="{ processing }"
+                        >
+                            <Button
+                                type="submit"
+                                variant="destructive"
+                                :disabled="processing"
+                                onclick="
+                                    return confirm(
+                                        'Permanently delete this draft event?',
+                                    );
+                                "
+                            >
+                                <Trash2 class="size-4" /> Delete draft
+                            </Button>
+                        </Form>
                     </CardContent>
                 </Card>
             </div>

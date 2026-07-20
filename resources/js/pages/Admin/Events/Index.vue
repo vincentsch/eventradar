@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Search, X } from '@lucide/vue';
+import { Plus, Search, X } from '@lucide/vue';
 import { reactive } from 'vue';
 import IndexPagination from '@/components/admin/IndexPagination.vue';
 import { Badge } from '@/components/ui/badge';
@@ -116,13 +116,20 @@ const formatStart = (event: EventRow) =>
     <Head title="Admin events" />
 
     <div class="flex flex-1 flex-col gap-5 p-4 md:p-6">
-        <header>
-            <p class="text-sm font-medium text-muted-foreground">Admin</p>
-            <h1 class="text-2xl font-semibold tracking-tight">Events</h1>
-            <p class="mt-1 text-sm text-muted-foreground">
-                Browse every event directly from MySQL. 50 rows per page,
-                without infinite scroll.
-            </p>
+        <header class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <p class="text-sm font-medium text-muted-foreground">Admin</p>
+                <h1 class="text-2xl font-semibold tracking-tight">Events</h1>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    Browse every event directly from MySQL. 50 rows per page,
+                    without infinite scroll.
+                </p>
+            </div>
+            <Button as-child
+                ><Link href="/admin/events/create"
+                    ><Plus class="size-4" /> Create event</Link
+                ></Button
+            >
         </header>
 
         <form

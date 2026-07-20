@@ -28,6 +28,8 @@ class Event extends Model
         'description',
         'organizer_name',
         'venue_name',
+        'formatted_address',
+        'address_line_1',
         'starts_at',
         'ends_at',
         'timezone',
@@ -35,11 +37,13 @@ class Event extends Model
         'location_key',
         'locality',
         'region',
+        'postal_code',
         'country',
         'country_code',
         'latitude',
         'longitude',
         'image_set_key',
+        'status',
         'type',
         'tags',
         'minimum_price',
@@ -87,5 +91,11 @@ class Event extends Model
     public function attendances(): HasMany
     {
         return $this->hasMany(EventAttendance::class);
+    }
+
+    /** @return HasMany<EventMedia, $this> */
+    public function media(): HasMany
+    {
+        return $this->hasMany(EventMedia::class)->orderBy('position');
     }
 }

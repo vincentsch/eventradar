@@ -5,13 +5,23 @@ namespace App\Http\Controllers\Admin;
 use App\Domain\Events\EventStatus;
 use App\Domain\Events\EventType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\SaveEventRequest;
+use App\Jobs\ReconcileEventSearchIndex;
 use App\Models\Event;
 use App\Models\EventAttendance;
+use App\Services\Attendance\AttendanceManager;
+use App\Services\Discovery\PublicEventFilterOptions;
+use App\Services\Events\EventLocalDateTimeResolver;
+use App\Services\Events\EventMediaManager;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,6 +43,16 @@ class EventController extends Controller
         'region',
         'country',
         'country_code',
+    ];
+
+    /** @var list<string> */
+    private const EDIT_COLUMNS = [
+        'id', 'title', 'description', 'organizer_name', 'venue_name',
+        'formatted_address', 'address_line_1', 'postal_code', 'locality',
+        'region', 'country', 'country_code', 'latitude', 'longitude',
+        'timezone', 'starts_at', 'ends_at', 'starts_on_local', 'location_key',
+        'image_set_key', 'status', 'type', 'tags', 'minimum_price',
+        'currency_code', 'capacity', 'created_at', 'updated_at',
     ];
 
     public function index(Request $request): Response
@@ -71,6 +91,132 @@ class EventController extends Controller
         ]);
     }
 
+    public function create(): Response
+    {
+        return Inertia::render('Admin/Events/Form', [
+            'event' => null,
+            'options' => $this->formOptions(),
+        ]);
+    }
+
+    public function store(
+        SaveEventRequest $request,
+        EventLocalDateTimeResolver $dates,
+        EventMediaManager $media,
+        PublicEventFilterOptions $filters,
+    ): RedirectResponse {
+        $event = DB::transaction(function () use ($request, $dates, $media, $filters): Event {
+            $attributes = $this->attributes($request, $dates);
+            $event = new Event($attributes);
+            $event->user_id = $request->user()->id;
+            $event->image_set_key = $this->defaultImageSet($attributes['type']);
+            $event->setAttribute('payload', json_encode(['source' => 'admin'], JSON_THROW_ON_ERROR));
+            $event->save();
+            $media->replace($event, $request->file('images', []));
+            DB::afterCommit(fn () => $filters->forget());
+            ReconcileEventSearchIndex::dispatch($event->id)->onQueue('search')->afterCommit();
+
+            return $event;
+        }, 3);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Event created.']);
+
+        return to_route('admin.events.show', $event);
+    }
+
+    public function edit(string $event): Response
+    {
+        $record = Event::query()
+            ->select(self::EDIT_COLUMNS)
+            ->with(['media', 'imageSet.images'])
+            ->findOrFail($event);
+        $start = CarbonImmutable::instance($record->starts_at)->setTimezone($record->timezone);
+        $end = CarbonImmutable::instance($record->ends_at)->setTimezone($record->timezone);
+
+        return Inertia::render('Admin/Events/Form', [
+            'event' => [
+                ...$record->only([
+                    'id', 'title', 'description', 'organizer_name', 'venue_name',
+                    'formatted_address', 'address_line_1', 'postal_code', 'locality',
+                    'region', 'country', 'country_code', 'latitude', 'longitude',
+                    'timezone', 'status', 'type', 'tags', 'minimum_price',
+                    'currency_code', 'capacity',
+                ]),
+                'starts_at_local' => $start->format('Y-m-d\TH:i'),
+                'ends_at_local' => $end->format('Y-m-d\TH:i'),
+                'starts_at_offset' => $start->format('P'),
+                'ends_at_offset' => $end->format('P'),
+                'images' => $this->images($record),
+            ],
+            'options' => $this->formOptions(),
+        ]);
+    }
+
+    public function update(
+        SaveEventRequest $request,
+        string $event,
+        EventLocalDateTimeResolver $dates,
+        EventMediaManager $media,
+        AttendanceManager $attendance,
+        PublicEventFilterOptions $filters,
+    ): RedirectResponse {
+        $record = Event::query()->select(self::EDIT_COLUMNS)->findOrFail($event);
+
+        DB::transaction(function () use ($request, $record, $dates, $media, $attendance, $filters): void {
+            $originalStart = $record->starts_at->getTimestamp();
+            $originalStatus = $record->status;
+            $record->fill($this->attributes($request, $dates));
+            $scheduleChanged = $record->starts_at->getTimestamp() !== $originalStart;
+            $visibilityChanged = $record->status !== $originalStatus;
+            $record->save();
+
+            if ($request->hasFile('images')) {
+                $media->replace($record, $request->file('images', []));
+            }
+
+            if ($scheduleChanged || $visibilityChanged) {
+                $attendance->rescheduleForEvent($record);
+            }
+
+            DB::afterCommit(fn () => $filters->forget());
+            ReconcileEventSearchIndex::dispatch($record->id)->onQueue('search')->afterCommit();
+        }, 3);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Event updated.']);
+
+        return to_route('admin.events.show', $record);
+    }
+
+    public function destroy(string $event, PublicEventFilterOptions $filters): RedirectResponse
+    {
+        $record = Event::query()
+            ->select(['id', 'status'])
+            ->withCount('attendances')
+            ->findOrFail($event);
+
+        if ($record->status !== EventStatus::Draft || $record->attendances_count > 0) {
+            throw ValidationException::withMessages([
+                'event' => 'Only draft events without attendance history can be permanently deleted.',
+            ]);
+        }
+
+        DB::transaction(function () use ($record, $filters): void {
+            $paths = $record->media()
+                ->get(['path', 'card_path'])
+                ->flatMap(fn ($media): array => [$media->path, $media->card_path])
+                ->all();
+            $id = $record->id;
+            $record->delete();
+            DB::afterCommit(fn () => Storage::disk('public')->delete($paths));
+            DB::afterCommit(fn () => $filters->forget());
+            ReconcileEventSearchIndex::dispatch($id)->onQueue('search')->afterCommit();
+        }, 3);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Draft event deleted.']);
+
+        return to_route('admin.events.index');
+    }
+
     public function show(string $event): Response
     {
         $query = Event::query()->select([
@@ -79,6 +225,8 @@ class EventController extends Controller
             'description',
             'organizer_name',
             'venue_name',
+            'formatted_address',
+            'address_line_1',
             'starts_at',
             'ends_at',
             'timezone',
@@ -86,6 +234,7 @@ class EventController extends Controller
             'location_key',
             'locality',
             'region',
+            'postal_code',
             'country',
             'country_code',
             'latitude',
@@ -108,9 +257,12 @@ class EventController extends Controller
         }
 
         $record = $query
-            ->with(['imageSet.images' => fn ($query) => $query
-                ->select(['id', 'image_set_key', 'role', 'path', 'width', 'height', 'alt'])
-                ->orderBy('role')])
+            ->with([
+                'media',
+                'imageSet.images' => fn ($query) => $query
+                    ->select(['id', 'image_set_key', 'role', 'path', 'width', 'height', 'alt'])
+                    ->orderBy('role'),
+            ])
             ->whereKey($event)
             ->firstOrFail();
 
@@ -130,6 +282,8 @@ class EventController extends Controller
                     'description',
                     'organizer_name',
                     'venue_name',
+                    'formatted_address',
+                    'address_line_1',
                     'starts_at',
                     'ends_at',
                     'timezone',
@@ -137,6 +291,7 @@ class EventController extends Controller
                     'location_key',
                     'locality',
                     'region',
+                    'postal_code',
                     'country',
                     'country_code',
                     'latitude',
@@ -151,13 +306,7 @@ class EventController extends Controller
                     'updated_at',
                 ]),
                 'payload_bytes' => (int) $record->getAttribute('payload_bytes'),
-                'images' => $record->imageSet?->images->map(fn ($image): array => $image->only([
-                    'role',
-                    'path',
-                    'width',
-                    'height',
-                    'alt',
-                ]))->values()->all() ?? [],
+                'images' => $this->images($record),
             ],
             'attendance' => [
                 'going' => $attendanceCounts->get('going', 0),
@@ -226,5 +375,99 @@ class EventController extends Controller
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
 
         return $date !== false && $date->format('Y-m-d') === $value;
+    }
+
+    /** @return array<string, mixed> */
+    private function attributes(SaveEventRequest $request, EventLocalDateTimeResolver $dates): array
+    {
+        $validated = $request->validated();
+        $start = $dates->resolve(
+            $validated['starts_at_local'],
+            $validated['timezone'],
+            $validated['starts_at_offset'] ?? null,
+            'starts_at_local',
+        );
+        $end = $dates->resolve(
+            $validated['ends_at_local'],
+            $validated['timezone'],
+            $validated['ends_at_offset'] ?? null,
+            'ends_at_local',
+        );
+
+        if ($end->lte($start)) {
+            throw ValidationException::withMessages(['ends_at_local' => 'The event must end after it starts.']);
+        }
+
+        return [
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'organizer_name' => $validated['organizer_name'],
+            'venue_name' => $validated['venue_name'],
+            'formatted_address' => $validated['formatted_address'],
+            'address_line_1' => $validated['address_line_1'] ?? null,
+            'postal_code' => $validated['postal_code'] ?? null,
+            'locality' => $validated['locality'],
+            'region' => $validated['region'] ?? null,
+            'country' => $validated['country'],
+            'country_code' => $validated['country_code'],
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'timezone' => $validated['timezone'],
+            'starts_at' => $start,
+            'ends_at' => $end,
+            'starts_on_local' => $start->setTimezone($validated['timezone'])->toDateString(),
+            'location_key' => Str::limit(Str::lower($validated['country_code']).'-'.Str::slug($validated['locality']), 64, ''),
+            'status' => $validated['status'],
+            'type' => $validated['type'],
+            'tags' => array_values(array_unique(array_filter(array_map(
+                fn (string $tag): string => trim($tag),
+                $validated['tags'],
+            )))),
+            'minimum_price' => $validated['minimum_price'] ?? null,
+            'currency_code' => $validated['currency_code'] ?? null,
+            'capacity' => $validated['capacity'] ?? null,
+        ];
+    }
+
+    /** @return array{statuses: list<string>, types: list<string>, timezones: list<string>} */
+    private function formOptions(): array
+    {
+        return [
+            'statuses' => EventStatus::values(),
+            'types' => EventType::values(),
+            'timezones' => timezone_identifiers_list(),
+        ];
+    }
+
+    /** @return list<array<string, int|string>> */
+    private function images(Event $event): array
+    {
+        if ($event->media->isNotEmpty()) {
+            return $event->media->map(fn ($image): array => [
+                'role' => $image->position === 0 ? 'cover' : 'gallery',
+                'path' => $image->url(),
+                'width' => $image->width,
+                'height' => $image->height,
+                'alt' => $image->alt,
+            ])->values()->all();
+        }
+
+        return $event->imageSet?->images->map(fn ($image): array => [
+            ...$image->only(['role', 'path', 'width', 'height', 'alt']),
+        ])->values()->all() ?? [];
+    }
+
+    private function defaultImageSet(string $type): string
+    {
+        return match ($type) {
+            'concert' => 'concert-industrial-after-dark',
+            'conference' => 'conference-timber-ideas-forum',
+            'meetup' => 'meetup-neighborhood-makers-table',
+            'workshop' => 'workshop-ceramic-studio',
+            'festival' => 'festival-garden-long-table',
+            'sports' => 'sports-community-track-evening',
+            'networking' => 'networking-architecture-studio-social',
+            'exhibition' => 'exhibition-adaptive-reuse-opening',
+        };
     }
 }

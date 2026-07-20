@@ -19,9 +19,12 @@ final class PublicEventFeed
     {
         $query = Event::query()
             ->select(PublicEventData::SOURCE_COLUMNS)
-            ->with(['imageSet.images' => fn ($query) => $query
-                ->select(['id', 'image_set_key', 'role', 'path', 'alt'])
-                ->orderBy('role')]);
+            ->with([
+                'media',
+                'imageSet.images' => fn ($query) => $query
+                    ->select(['id', 'image_set_key', 'role', 'path', 'alt'])
+                    ->orderBy('role'),
+            ]);
 
         $this->visibility->apply($query, $instant, useCursorAccessPath: true);
 

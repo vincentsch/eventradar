@@ -94,9 +94,12 @@ final class PublicEventSearch
 
         $records = Event::query()
             ->select(PublicEventData::SOURCE_COLUMNS)
-            ->with(['imageSet.images' => fn ($query) => $query
-                ->select(['id', 'image_set_key', 'role', 'path', 'alt'])
-                ->orderBy('role')])
+            ->with([
+                'media',
+                'imageSet.images' => fn ($query) => $query
+                    ->select(['id', 'image_set_key', 'role', 'path', 'alt'])
+                    ->orderBy('role'),
+            ])
             ->whereIn('id', $ids);
         $this->visibility->apply($records, $instant);
         $byId = $records->get()->keyBy(fn (Event $event): string => (string) $event->getKey());

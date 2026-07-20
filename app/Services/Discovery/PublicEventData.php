@@ -6,7 +6,6 @@ use App\Domain\Events\EventStatus;
 use App\Domain\Events\EventType;
 use App\Domain\Events\ImageRole;
 use App\Models\Event;
-use App\Models\EventImage;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use LogicException;
@@ -19,12 +18,15 @@ final class PublicEventData
         'title',
         'description',
         'venue_name',
+        'formatted_address',
+        'address_line_1',
         'starts_at',
         'ends_at',
         'timezone',
         'starts_on_local',
         'locality',
         'region',
+        'postal_code',
         'country',
         'country_code',
         'latitude',
@@ -46,8 +48,9 @@ final class PublicEventData
         }
 
         $localStart = CarbonImmutable::instance($startsAt)->setTimezone((string) $event->timezone);
-        $cover = $this->image($event, ImageRole::Cover);
-        $detail = $this->image($event, ImageRole::Detail);
+        $images = $this->images($event);
+        $cover = $images[0];
+        $detail = $images[1] ?? $images[0];
 
         return [
             'id' => (string) $event->getKey(),
@@ -65,41 +68,49 @@ final class PublicEventData
             'locationLabel' => $this->locationLabel($event),
             'latitude' => $event->latitude === null ? null : (float) $event->latitude,
             'longitude' => $event->longitude === null ? null : (float) $event->longitude,
-            'image' => $this->imageData($cover),
-            'detailImage' => $this->imageData($detail),
+            'image' => $cover,
+            'detailImage' => $detail,
         ];
     }
 
-    /** @return array{src: string, alt: string} */
-    private function imageData(EventImage $image): array
+    /** @return list<array{src: string, alt: string}> */
+    private function images(Event $event): array
     {
-        return [
-            'src' => (string) $image->path,
-            'alt' => (string) $image->alt,
-        ];
-    }
-
-    private function image(Event $event, ImageRole $role): EventImage
-    {
-        $image = $event->imageSet?->images->first(
-            function (EventImage $image) use ($role): bool {
-                $imageRole = $image->getAttribute('role');
-
-                return $imageRole instanceof ImageRole
-                    ? $imageRole === $role
-                    : (string) $imageRole === $role->value;
-            },
-        );
-
-        if (! $image instanceof EventImage) {
-            throw new LogicException("Event [{$event->getKey()}] is missing its {$role->value} image.");
+        if ($event->media->isNotEmpty()) {
+            return $event->media->map(fn ($image): array => [
+                'src' => $image->position === 0 ? $image->cardUrl() : $image->url(),
+                'alt' => (string) $image->alt,
+            ])->values()->all();
         }
 
-        return $image;
+        $images = [];
+        foreach ([ImageRole::Cover, ImageRole::Detail] as $role) {
+            $image = $event->imageSet?->images->first(
+                function ($image) use ($role): bool {
+                    $imageRole = $image->getAttribute('role');
+
+                    return $imageRole instanceof ImageRole
+                        ? $imageRole === $role
+                        : (string) $imageRole === $role->value;
+                },
+            );
+
+            if ($image === null) {
+                throw new LogicException("Event [{$event->getKey()}] is missing its {$role->value} image.");
+            }
+
+            $images[] = ['src' => (string) $image->path, 'alt' => (string) $image->alt];
+        }
+
+        return $images;
     }
 
     private function locationLabel(Event $event): string
     {
+        if (trim((string) $event->formatted_address) !== '') {
+            return (string) $event->formatted_address;
+        }
+
         $parts = [];
 
         foreach ([$event->locality, $event->region, $event->country] as $part) {

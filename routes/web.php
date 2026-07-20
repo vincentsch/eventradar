@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Account\MyEventsController;
 use App\Http\Controllers\AccountRedirectController;
+use App\Http\Controllers\Admin\AddressSearchController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventAttendeeController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\DiscoverController;
+use App\Http\Controllers\EventAddressController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\SignedAttendanceController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +20,9 @@ Route::inertia('events-visual-2', 'Public/NearAndSoon')->name('events.visual2');
 
 Route::redirect('events', '/admin/events')->name('events.index');
 Route::get('events/{event}', [EventController::class, 'show'])->name('events.show');
+Route::get('events/{event}/address', EventAddressController::class)
+    ->middleware('throttle:10,1')
+    ->name('events.address');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('events/{event}/attendance', [AttendanceController::class, 'begin'])
@@ -45,7 +50,15 @@ Route::get('account', AccountRedirectController::class)->middleware('auth')->nam
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('address-search', AddressSearchController::class)
+        ->middleware('throttle:20,1')
+        ->name('admin.address-search');
     Route::get('events', [AdminEventController::class, 'index'])->name('admin.events.index');
+    Route::get('events/create', [AdminEventController::class, 'create'])->name('admin.events.create');
+    Route::post('events', [AdminEventController::class, 'store'])->name('admin.events.store');
+    Route::get('events/{event}/edit', [AdminEventController::class, 'edit'])->name('admin.events.edit');
+    Route::put('events/{event}', [AdminEventController::class, 'update'])->name('admin.events.update');
+    Route::delete('events/{event}', [AdminEventController::class, 'destroy'])->name('admin.events.destroy');
     Route::get('events/{event}', [AdminEventController::class, 'show'])->name('admin.events.show');
     Route::get('events/{event}/attendees', EventAttendeeController::class)
         ->name('admin.events.attendees');

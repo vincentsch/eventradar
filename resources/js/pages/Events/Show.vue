@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Form, Head, Link, usePage } from '@inertiajs/vue3';
+import { Form, Head, Link, useHttp, usePage } from '@inertiajs/vue3';
 import { BellRing, Check, Users } from '@lucide/vue';
+import { computed, onMounted, ref } from 'vue';
+import { Toaster } from '@/components/ui/sonner';
 import type { Auth } from '@/types';
 
 interface EventImage {
-    role: 'cover' | 'detail';
+    role: string;
     path: string;
     width: number;
     height: number;
@@ -17,12 +19,15 @@ interface EventDetail {
     description: string;
     organizer_name: string;
     venue_name: string;
+    formatted_address: string | null;
+    address_line_1: string | null;
     starts_at: string;
     ends_at: string;
     timezone: string;
     starts_on_local: string;
     locality: string;
     region: string | null;
+    postal_code: string | null;
     country: string;
     country_code: string;
     latitude: number | null;
@@ -68,14 +73,40 @@ const formatDateTime = (value: string) =>
         timeZoneName: 'short',
     }).format(new Date(value));
 
-const location = [
-    props.event.venue_name,
-    props.event.locality,
-    props.event.region,
-    props.event.country,
-]
-    .filter(Boolean)
-    .join(', ');
+const resolvedAddress = ref(props.event.formatted_address);
+const addressLookup = useHttp<
+    Record<string, never>,
+    { address: string | null }
+>({});
+const location = computed(() =>
+    resolvedAddress.value
+        ? `${props.event.venue_name}, ${resolvedAddress.value}`
+        : [
+              props.event.venue_name,
+              props.event.locality,
+              props.event.region,
+              props.event.country,
+          ]
+              .filter(Boolean)
+              .join(', '),
+);
+
+onMounted(async () => {
+    if (
+        resolvedAddress.value ||
+        props.event.latitude === null ||
+        props.event.longitude === null
+    ) {
+        return;
+    }
+
+    try {
+        await addressLookup.get(`/events/${props.event.id}/address`);
+        resolvedAddress.value = addressLookup.response?.address ?? null;
+    } catch {
+        // The city-level fallback remains useful when geocoding is unavailable.
+    }
+});
 </script>
 
 <template>
@@ -89,7 +120,7 @@ const location = [
         <div class="grid gap-4 sm:grid-cols-2">
             <img
                 v-for="image in event.images"
-                :key="image.role"
+                :key="image.path"
                 :src="image.path"
                 :alt="image.alt"
                 :width="image.width"
@@ -259,4 +290,5 @@ const location = [
             </div>
         </section>
     </article>
+    <Toaster />
 </template>

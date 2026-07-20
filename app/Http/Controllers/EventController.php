@@ -22,12 +22,15 @@ class EventController extends Controller
                 'description',
                 'organizer_name',
                 'venue_name',
+                'formatted_address',
+                'address_line_1',
                 'starts_at',
                 'ends_at',
                 'timezone',
                 'starts_on_local',
                 'locality',
                 'region',
+                'postal_code',
                 'country',
                 'country_code',
                 'latitude',
@@ -40,9 +43,12 @@ class EventController extends Controller
                 'currency_code',
                 'capacity',
             ])
-            ->with(['imageSet.images' => fn ($query) => $query
-                ->select(['id', 'image_set_key', 'role', 'path', 'width', 'height', 'alt'])
-                ->orderBy('role')])
+            ->with([
+                'media',
+                'imageSet.images' => fn ($query) => $query
+                    ->select(['id', 'image_set_key', 'role', 'path', 'width', 'height', 'alt'])
+                    ->orderBy('role'),
+            ])
             ->whereKey($event)
             ->whereIn('status', EventStatus::publicValues())
             ->where('ends_at', '>', Date::now('UTC'))
@@ -85,12 +91,15 @@ class EventController extends Controller
                     'description',
                     'organizer_name',
                     'venue_name',
+                    'formatted_address',
+                    'address_line_1',
                     'starts_at',
                     'ends_at',
                     'timezone',
                     'starts_on_local',
                     'locality',
                     'region',
+                    'postal_code',
                     'country',
                     'country_code',
                     'latitude',
@@ -102,13 +111,17 @@ class EventController extends Controller
                     'currency_code',
                     'capacity',
                 ]),
-                'images' => $record->imageSet?->images->map(fn ($image): array => $image->only([
-                    'role',
-                    'path',
-                    'width',
-                    'height',
-                    'alt',
-                ]))->values()->all() ?? [],
+                'images' => $record->media->isNotEmpty()
+                    ? $record->media->map(fn ($image): array => [
+                        'role' => $image->position === 0 ? 'cover' : 'gallery',
+                        'path' => $image->url(),
+                        'width' => $image->width,
+                        'height' => $image->height,
+                        'alt' => $image->alt,
+                    ])->values()->all()
+                    : $record->imageSet?->images->map(fn ($image): array => $image->only([
+                        'role', 'path', 'width', 'height', 'alt',
+                    ]))->values()->all() ?? [],
             ],
             'attendance' => [
                 'viewer_intent' => $viewerAttendance?->intent->value,

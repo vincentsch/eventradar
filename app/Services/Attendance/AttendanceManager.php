@@ -96,6 +96,63 @@ class AttendanceManager
         }, 3);
     }
 
+    public function rescheduleForEvent(Event $event): void
+    {
+        DB::transaction(function () use ($event): void {
+            $attendances = EventAttendance::query()
+                ->where('event_id', $event->id)
+                ->whereNull('cancelled_at')
+                ->lockForUpdate()
+                ->get();
+            $now = now('UTC');
+
+            foreach ($attendances as $attendance) {
+                $confirmationWasSent = AttendanceDelivery::query()
+                    ->where('attendance_id', $attendance->id)
+                    ->where('attendance_revision', $attendance->revision)
+                    ->where('kind', DeliveryKind::Confirmation->value)
+                    ->where('status', DeliveryStatus::Sent->value)
+                    ->exists();
+
+                AttendanceDelivery::query()
+                    ->where('attendance_id', $attendance->id)
+                    ->whereIn('status', [
+                        DeliveryStatus::Pending->value,
+                        DeliveryStatus::Processing->value,
+                        DeliveryStatus::Failed->value,
+                    ])
+                    ->update([
+                        'status' => DeliveryStatus::Skipped->value,
+                        'skipped_at' => $now,
+                        'claim_token' => null,
+                        'claimed_at' => null,
+                        'last_error' => 'Event schedule or visibility changed.',
+                        'updated_at' => $now,
+                    ]);
+
+                $attendance->revision++;
+                $attendance->save();
+
+                if (in_array($event->status->value, EventStatus::publicValues(), true)) {
+                    if (! $confirmationWasSent) {
+                        AttendanceDelivery::query()->create([
+                            'attendance_id' => $attendance->id,
+                            'attendance_revision' => $attendance->revision,
+                            'kind' => DeliveryKind::Confirmation->value,
+                            'status' => DeliveryStatus::Pending->value,
+                            'due_at' => $now,
+                        ]);
+                        SendAttendanceConfirmation::dispatch($attendance->id, $attendance->revision)
+                            ->onQueue('mail')
+                            ->afterCommit();
+                    }
+
+                    $this->createReminderDeliveries($attendance, $event, $now);
+                }
+            }
+        }, 3);
+    }
+
     private function ensureEventCanAcceptAttendance(Event $event): void
     {
         if (! in_array($event->status->value, EventStatus::publicValues(), true) || $event->ends_at->isPast()) {
@@ -127,6 +184,25 @@ class AttendanceManager
                 'due_at' => $dueAt,
                 'skipped_at' => $isMissedReminder ? $now : null,
                 'last_error' => $isMissedReminder ? 'Reminder horizon passed before registration.' : null,
+            ]);
+        }
+    }
+
+    private function createReminderDeliveries(EventAttendance $attendance, Event $event, \DateTimeInterface $now): void
+    {
+        foreach ([
+            DeliveryKind::ThreeDays->value => $event->starts_at->subDays(3),
+            DeliveryKind::OneDay->value => $event->starts_at->subDay(),
+        ] as $kind => $dueAt) {
+            $missed = $dueAt->lte($now);
+            AttendanceDelivery::query()->create([
+                'attendance_id' => $attendance->id,
+                'attendance_revision' => $attendance->revision,
+                'kind' => $kind,
+                'status' => $missed ? DeliveryStatus::Skipped->value : DeliveryStatus::Pending->value,
+                'due_at' => $dueAt,
+                'skipped_at' => $missed ? $now : null,
+                'last_error' => $missed ? 'Reminder horizon passed after event rescheduling.' : null,
             ]);
         }
     }

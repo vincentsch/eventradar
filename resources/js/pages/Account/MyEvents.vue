@@ -10,6 +10,7 @@ interface EventCard {
     ends_at: string;
     timezone: string;
     venue_name: string;
+    formatted_address: string | null;
     locality: string;
     region: string | null;
     country: string;
@@ -137,8 +138,10 @@ const formatStart = (event: EventCard) =>
                             <p class="flex gap-2">
                                 <MapPin class="mt-0.5 size-4 shrink-0" />
                                 {{ attendance.event.venue_name }},
-                                {{ attendance.event.locality }},
-                                {{ attendance.event.country }}
+                                {{
+                                    attendance.event.formatted_address ??
+                                    `${attendance.event.locality}, ${attendance.event.country}`
+                                }}
                             </p>
                         </div>
 

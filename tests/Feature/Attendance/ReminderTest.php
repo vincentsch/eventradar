@@ -7,6 +7,7 @@ use App\Models\AttendanceDelivery;
 use App\Models\Event;
 use App\Models\EventAttendance;
 use App\Models\User;
+use App\Services\Attendance\AttendanceManager;
 use App\Services\Attendance\ReminderDispatcher;
 use App\Services\Events\EventImageCatalogueImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -103,4 +104,30 @@ it('skips a reminder horizon that passed before registration', function () {
         ->and(AttendanceDelivery::query()
             ->where('kind', 'one_day')
             ->firstOrFail()->status)->toBe(DeliveryStatus::Pending);
+});
+
+it('rebuilds pending reminder horizons when an event is rescheduled', function () {
+    $attendance = attendanceForReminder();
+    Queue::fake();
+    $oldOneDay = AttendanceDelivery::query()
+        ->where('kind', 'one_day')
+        ->firstOrFail();
+
+    $attendance->event->forceFill([
+        'starts_at' => $attendance->event->starts_at->addDays(5),
+        'ends_at' => $attendance->event->ends_at->addDays(5),
+        'starts_on_local' => $attendance->event->starts_on_local->addDays(5),
+    ])->save();
+    app(AttendanceManager::class)->rescheduleForEvent($attendance->event);
+
+    $attendance->refresh();
+    $newOneDay = AttendanceDelivery::query()
+        ->where('attendance_revision', 2)
+        ->where('kind', 'one_day')
+        ->firstOrFail();
+
+    expect($attendance->revision)->toBe(2)
+        ->and($oldOneDay->fresh()->status)->toBe(DeliveryStatus::Skipped)
+        ->and($newOneDay->status)->toBe(DeliveryStatus::Pending)
+        ->and($newOneDay->due_at->equalTo($attendance->event->starts_at->subDay()))->toBeTrue();
 });

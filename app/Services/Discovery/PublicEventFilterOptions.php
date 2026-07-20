@@ -59,6 +59,11 @@ final class PublicEventFilterOptions
         return array_column($this->locations($instant), 'value');
     }
 
+    public function forget(): void
+    {
+        Cache::forget(self::CACHE_KEY);
+    }
+
     private function locationLabel(Event $event): string
     {
         $region = trim((string) $event->region);
