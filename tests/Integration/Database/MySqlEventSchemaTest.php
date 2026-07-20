@@ -24,7 +24,8 @@ it('creates the normalized MySQL columns, constraints, and access indexes', func
         ->and($columns['ends_at'])->toBe('datetime')
         ->and($columns['starts_on_local'])->toBe('date')
         ->and($columns['payload'])->toBe('mediumtext')
-        ->and($columns['tags'])->toBe('json');
+        ->and($columns['tags'])->toBe('json')
+        ->and($columns['is_public'])->toBe('tinyint');
 
     $indexes = DB::table('information_schema.statistics')
         ->selectRaw('INDEX_NAME AS index_name')
@@ -46,6 +47,8 @@ it('creates the normalized MySQL columns, constraints, and access indexes', func
         'events_admin_country_index',
         'events_admin_local_date_index',
         'events_admin_title_index',
+        'events_public_cursor_index',
+        'events_public_location_options_index',
     );
 
     $sqlMode = (string) DB::selectOne('SELECT @@SESSION.sql_mode AS sql_mode')->sql_mode;
@@ -81,4 +84,25 @@ it('rejects invalid normalized boundary combinations', function (array $changes)
     'price without currency' => [['minimum_price' => 12.34, 'currency_code' => null]],
     'lowercase currency code' => [['minimum_price' => 12.34, 'currency_code' => 'eur']],
     'zero capacity' => [['capacity' => 0]],
+    'duration over seventy two hours' => [[
+        'starts_at' => '2026-08-21 18:00:00',
+        'ends_at' => '2026-08-24 18:00:01',
+        'starts_on_local' => '2026-08-21',
+    ]],
 ]);
+
+it('derives the public access flag from lifecycle status', function () {
+    $published = Event::factory()->published()->create();
+    $soldOut = Event::factory()->soldOut()->create();
+    $draft = Event::factory()->create(['status' => 'draft']);
+    $cancelled = Event::factory()->create(['status' => 'cancelled']);
+
+    $flags = DB::table('events')
+        ->whereIn('id', [$published->id, $soldOut->id, $draft->id, $cancelled->id])
+        ->pluck('is_public', 'id');
+
+    expect((int) $flags[$published->id])->toBe(1)
+        ->and((int) $flags[$soldOut->id])->toBe(1)
+        ->and((int) $flags[$draft->id])->toBe(0)
+        ->and((int) $flags[$cancelled->id])->toBe(0);
+});

@@ -2,12 +2,13 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventController as AdminEventController;
+use App\Http\Controllers\DiscoverController;
 use App\Http\Controllers\EventController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'Public/Discover')->name('home');
+Route::get('/', DiscoverController::class)->name('home');
 
-Route::inertia('events-visual-1', 'Public/Discover')->name('events.visual1');
+Route::get('events-visual-1', DiscoverController::class)->name('events.visual1');
 Route::inertia('events-visual-2', 'Public/NearAndSoon')->name('events.visual2');
 
 Route::redirect('events', '/admin/events')->name('events.index');

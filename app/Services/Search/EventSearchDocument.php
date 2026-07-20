@@ -49,6 +49,7 @@ final class EventSearchDocument
         'type',
         'tags',
         'starts_on_local',
+        'starts_on_local_number',
         'starts_at_timestamp',
         'ends_at_timestamp',
         'minimum_price',
@@ -73,6 +74,7 @@ final class EventSearchDocument
         'country_code',
         'location_key',
         'starts_on_local',
+        'starts_on_local_number',
         'starts_at_timestamp',
         'ends_at_timestamp',
         'minimum_price',
@@ -83,6 +85,7 @@ final class EventSearchDocument
     public const SORTABLE_ATTRIBUTES = [
         'starts_at_timestamp',
         'minimum_price',
+        'id',
     ];
 
     /** @return array<string, mixed> */
@@ -121,6 +124,7 @@ final class EventSearchDocument
             'type' => $type instanceof EventType ? $type->value : (string) $type,
             'tags' => array_values(array_map('strval', $tags)),
             'starts_on_local' => $startsOnLocal->format('Y-m-d'),
+            'starts_on_local_number' => (int) $startsOnLocal->format('Ymd'),
             'starts_at_timestamp' => $startsAt->getTimestamp(),
             'ends_at_timestamp' => $endsAt->getTimestamp(),
             'minimum_price' => $minimumPrice === null ? null : (float) $minimumPrice,

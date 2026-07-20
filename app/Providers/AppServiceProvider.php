@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Discovery\EventDiscoverySearchGateway;
+use App\Services\Discovery\MeilisearchEventDiscoverySearchGateway;
 use App\Services\Search\EventSearchGateway;
 use App\Services\Search\MeilisearchEventSearchGateway;
 use Carbon\CarbonImmutable;
@@ -34,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(EventSearchGateway::class, MeilisearchEventSearchGateway::class);
+        $this->app->bind(EventDiscoverySearchGateway::class, MeilisearchEventDiscoverySearchGateway::class);
     }
 
     /**

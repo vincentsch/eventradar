@@ -40,6 +40,7 @@ it('builds a thin public document with numeric price and no private provenance',
             'status' => 'published',
             'type' => 'exhibition',
             'starts_on_local' => '2026-08-01',
+            'starts_on_local_number' => 20260801,
             'starts_at_timestamp' => CarbonImmutable::parse('2026-08-01 18:00:00', 'UTC')->getTimestamp(),
             'minimum_price' => 19.9,
             '_geo' => ['lat' => 52.52, 'lng' => 13.405],
@@ -84,6 +85,6 @@ it('keeps search settings deliberately small with a one thousand hit ceiling', f
 
     expect($settings['searchableAttributes'])->toBe(EventSearchDocument::SEARCHABLE_ATTRIBUTES)
         ->and($settings['filterableAttributes'])->toBe(EventSearchDocument::FILTERABLE_ATTRIBUTES)
-        ->and($settings['sortableAttributes'])->toBe(['starts_at_timestamp', 'minimum_price'])
+        ->and($settings['sortableAttributes'])->toBe(['starts_at_timestamp', 'minimum_price', 'id'])
         ->and($settings['pagination']['maxTotalHits'])->toBe(1_000);
 });

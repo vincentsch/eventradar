@@ -8,6 +8,7 @@
         <testsuite name="MySQL integration">
             <directory>tests/Integration/Database</directory>
             <directory>tests/Feature/Search</directory>
+            <directory>tests/Feature/Discovery</directory>
         </testsuite>
     </testsuites>
     <source>
