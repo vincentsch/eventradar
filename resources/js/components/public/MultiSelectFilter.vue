@@ -10,9 +10,8 @@ import {
     ComboboxPortal,
     ComboboxRoot,
     ComboboxTrigger,
-    ComboboxViewport,
 } from 'reka-ui';
-import { computed, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import type { Component } from 'vue';
 import type { PublicEventFilterOption } from '@/types/public-events';
 
@@ -61,6 +60,106 @@ const triggerSurface = computed(() =>
 
 function update(value: string[] | string): void {
     emit('update:modelValue', Array.isArray(value) ? value : [value]);
+}
+
+// Own slim scrollbar for the option list: overlay-scrollbar platforms hide
+// native scrollbars entirely, leaving no hint that the list scrolls and no
+// way to drag it. Track and thumb are drawn in 0-100 viewBox units.
+const listElement = ref<HTMLElement | null>(null);
+const trackElement = ref<SVGSVGElement | null>(null);
+const thumb = reactive({ visible: false, top: 0, height: 0 });
+let listObserver: MutationObserver | null = null;
+let dragPointerId: number | null = null;
+let dragStartY = 0;
+let dragStartScrollTop = 0;
+
+function syncThumb() {
+    const list = listElement.value;
+
+    if (!list) {
+        return;
+    }
+
+    const { scrollHeight, clientHeight, scrollTop } = list;
+
+    if (scrollHeight <= clientHeight + 1) {
+        thumb.visible = false;
+
+        return;
+    }
+
+    thumb.visible = true;
+    thumb.height = Math.max((clientHeight / scrollHeight) * 100, 12);
+    thumb.top =
+        (scrollTop / (scrollHeight - clientHeight)) * (100 - thumb.height);
+}
+
+watch(open, (isOpen) => {
+    listObserver?.disconnect();
+    listObserver = null;
+
+    if (!isOpen) {
+        return;
+    }
+
+    void nextTick(() => {
+        syncThumb();
+
+        if (listElement.value) {
+            listObserver = new MutationObserver(syncThumb);
+            listObserver.observe(listElement.value, {
+                childList: true,
+                subtree: true,
+            });
+        }
+    });
+});
+
+onBeforeUnmount(() => listObserver?.disconnect());
+
+function onThumbPointerDown(event: PointerEvent) {
+    const list = listElement.value;
+
+    if (!list) {
+        return;
+    }
+
+    dragPointerId = event.pointerId;
+    dragStartY = event.clientY;
+    dragStartScrollTop = list.scrollTop;
+    (event.target as Element).setPointerCapture(event.pointerId);
+    event.preventDefault();
+}
+
+function onThumbPointerMove(event: PointerEvent) {
+    const list = listElement.value;
+    const track = trackElement.value;
+
+    if (dragPointerId !== event.pointerId || !list || !track) {
+        return;
+    }
+
+    const trackHeight = track.clientHeight || 1;
+    list.scrollTop =
+        dragStartScrollTop +
+        ((event.clientY - dragStartY) / trackHeight) * list.scrollHeight;
+}
+
+function onThumbPointerUp() {
+    dragPointerId = null;
+}
+
+function onTrackPointerDown(event: PointerEvent) {
+    const list = listElement.value;
+    const track = trackElement.value;
+
+    if (!list || !track) {
+        return;
+    }
+
+    const bounds = track.getBoundingClientRect();
+    const ratio = (event.clientY - bounds.top) / (bounds.height || 1);
+    list.scrollTop = ratio * list.scrollHeight - list.clientHeight / 2;
 }
 </script>
 
@@ -112,27 +211,62 @@ function update(value: string[] | string): void {
                             :aria-label="`Search ${label.toLowerCase()}`"
                         />
                     </div>
-                    <ComboboxViewport class="max-h-64 overflow-y-auto p-1.5">
-                        <ComboboxEmpty
-                            class="px-3 py-6 text-center text-sm text-stone-500"
+                    <div class="relative">
+                        <div
+                            ref="listElement"
+                            class="max-h-64 [scrollbar-width:none] overflow-y-auto overscroll-contain p-1.5 [&::-webkit-scrollbar]:hidden"
+                            :class="thumb.visible ? 'pr-4' : ''"
+                            @scroll.passive="syncThumb"
                         >
-                            No {{ label.toLowerCase() }} found
-                        </ComboboxEmpty>
-                        <ComboboxItem
-                            v-for="option in options"
-                            :key="option.value"
-                            :value="option.value"
-                            :text-value="option.label"
-                            class="relative flex cursor-pointer items-center rounded-lg py-2.5 pr-3 pl-9 text-sm font-semibold text-stone-700 outline-none data-[highlighted]:bg-stone-900/8 data-[highlighted]:text-stone-950"
-                        >
-                            <ComboboxItemIndicator
-                                class="absolute left-3 inline-flex size-4 items-center justify-center text-blue-700"
+                            <ComboboxEmpty
+                                class="px-3 py-6 text-center text-sm text-stone-500"
                             >
-                                <Check class="size-4" aria-hidden="true" />
-                            </ComboboxItemIndicator>
-                            {{ option.label }}
-                        </ComboboxItem>
-                    </ComboboxViewport>
+                                No {{ label.toLowerCase() }} found
+                            </ComboboxEmpty>
+                            <ComboboxItem
+                                v-for="option in options"
+                                :key="option.value"
+                                :value="option.value"
+                                :text-value="option.label"
+                                class="relative flex cursor-pointer items-center rounded-lg py-2.5 pr-3 pl-9 text-sm font-semibold text-stone-700 outline-none data-[highlighted]:bg-stone-900/8 data-[highlighted]:text-stone-950"
+                            >
+                                <ComboboxItemIndicator
+                                    class="absolute left-3 inline-flex size-4 items-center justify-center text-blue-700"
+                                >
+                                    <Check class="size-4" aria-hidden="true" />
+                                </ComboboxItemIndicator>
+                                {{ option.label }}
+                            </ComboboxItem>
+                        </div>
+
+                        <svg
+                            v-show="thumb.visible"
+                            ref="trackElement"
+                            viewBox="0 0 4 100"
+                            preserveAspectRatio="none"
+                            aria-hidden="true"
+                            class="absolute top-1 right-1 bottom-1 w-1.5 cursor-pointer"
+                            @pointerdown.self="onTrackPointerDown"
+                        >
+                            <rect
+                                width="4"
+                                height="100"
+                                rx="2"
+                                class="fill-stone-900/10"
+                            />
+                            <rect
+                                width="4"
+                                :y="thumb.top"
+                                :height="thumb.height"
+                                rx="2"
+                                class="fill-stone-900/35 transition-colors hover:fill-stone-900/55"
+                                @pointerdown.stop="onThumbPointerDown"
+                                @pointermove="onThumbPointerMove"
+                                @pointerup="onThumbPointerUp"
+                                @pointercancel="onThumbPointerUp"
+                            />
+                        </svg>
+                    </div>
                 </ComboboxContent>
             </ComboboxPortal>
         </ComboboxRoot>

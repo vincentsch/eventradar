@@ -10,7 +10,7 @@
     <tr>
         <td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;">
-                <tr><td style="padding:0 4px 20px;font-size:20px;font-weight:800;"><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#f4510b;vertical-align:-1px;margin-right:8px;"></span>EventRadar</td></tr>
+                @include('mail.partials.brand-header')
                 <tr>
                     <td style="overflow:hidden;border-radius:24px;background:#1c1917;color:#ffffff;box-shadow:0 10px 32px rgba(28,25,23,0.14);">
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -18,7 +18,7 @@
                                 <td style="padding:40px 40px 18px;">
                                     <div style="margin-bottom:14px;color:#fb923c;font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;">{{ $eyebrow }}</div>
                                     <h1 style="margin:0;font-size:34px;line-height:1.08;letter-spacing:-1.2px;">{{ $heading }}</h1>
-                                    <p style="margin:16px 0 0;color:#d6d3d1;font-size:16px;line-height:1.6;">Hi {{ $attendance->user->name }}, here are the details for <strong style="color:#ffffff;">{{ $eventDetails['title'] }}</strong>.</p>
+                                    <p style="margin:16px 0 0;color:#d6d3d1;font-size:16px;line-height:1.6;">Hi {{ $attendance->user->name }}, <strong style="color:#ffffff;">{{ $eventDetails['title'] }}</strong> is nearly here. The essentials, one more time:</p>
                                 </td>
                             </tr>
                             <tr>
@@ -40,7 +40,8 @@
                         </table>
                     </td>
                 </tr>
-                <tr><td style="padding:20px 8px;color:#78716c;font-size:12px;line-height:1.6;">No longer attending? <a href="{{ $cancelUrl }}" style="color:#57534e;text-decoration:underline;">Review or cancel your attendance</a>.</td></tr>
+                <tr><td style="padding:20px 8px 6px;color:#78716c;font-size:12px;line-height:1.6;">No longer attending? <a href="{{ $cancelUrl }}" style="color:#57534e;text-decoration:underline;">Review or cancel your attendance</a>.</td></tr>
+                @include('mail.partials.brand-footer')
             </table>
         </td>
     </tr>

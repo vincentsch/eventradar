@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Attendance\AttendanceIntent;
 use App\Http\Requests\StoreAttendanceRequest;
 use App\Models\Event;
 use App\Models\EventAttendance;
 use App\Services\Attendance\AttendanceManager;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,6 +17,23 @@ class AttendanceController extends Controller
     public function begin(string $event): RedirectResponse
     {
         return redirect()->route('events.show', ['event' => $event]);
+    }
+
+    /**
+     * The viewer's current intent for one event, read lazily by the event
+     * detail modal when it opens.
+     */
+    public function status(Request $request, string $event): JsonResponse
+    {
+        $intent = EventAttendance::query()
+            ->where('event_id', $event)
+            ->where('user_id', $request->user()->id)
+            ->first(['intent'])
+            ?->getAttribute('intent');
+
+        return response()->json([
+            'intent' => $intent instanceof AttendanceIntent ? $intent->value : $intent,
+        ]);
     }
 
     public function store(

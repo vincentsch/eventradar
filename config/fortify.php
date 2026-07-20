@@ -77,6 +77,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Redirects
+    |--------------------------------------------------------------------------
+    |
+    | A freshly verified account should land somewhere useful: the intended
+    | URL when one exists (for example the event that started the sign-up),
+    | otherwise public discovery rather than an empty personal area.
+    |
+    */
+
+    'redirects' => [
+        'email-verification' => '/',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Fortify Routes Prefix / Subdomain
     |--------------------------------------------------------------------------
     |

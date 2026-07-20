@@ -11,7 +11,7 @@ it('renders public registration', function () {
         ->assertInertia(fn ($page) => $page->component('auth/Register'));
 });
 
-it('creates a normal user and sends them to their account area', function () {
+it('creates a normal user and sends them to verify their email', function () {
     $response = $this->post('/register', [
         'name' => 'Event Guest',
         'email' => 'guest@example.test',
@@ -19,7 +19,10 @@ it('creates a normal user and sends them to their account area', function () {
         'password_confirmation' => 'correct-horse-battery-staple',
     ]);
 
-    $response->assertRedirect('/account');
+    // A fresh account must verify first; routing it through /account would
+    // hit the verified middleware and discard the intended URL that started
+    // the sign-up (for example an event's attendance action).
+    $response->assertRedirect(route('verification.notice', absolute: false));
     $this->assertAuthenticated();
 
     $user = User::query()->where('email', 'guest@example.test')->firstOrFail();

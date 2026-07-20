@@ -23,6 +23,13 @@ defineProps<{
     status?: string;
     canResetPassword: boolean;
 }>();
+
+const labelClasses =
+    'text-xs font-black tracking-widest text-stone-500 uppercase';
+const fieldClasses =
+    'h-12 rounded-xl border-transparent bg-[#f4f0e8] text-sm font-medium text-stone-900 shadow-none placeholder:text-stone-500 focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-stone-900 dark:border-transparent dark:bg-[#f4f0e8] dark:text-stone-900 dark:placeholder:text-stone-500';
+const linkClasses =
+    'text-blue-700 decoration-blue-700/30 hover:text-blue-900 dark:text-blue-700 dark:decoration-blue-700/30';
 </script>
 
 <template>
@@ -30,7 +37,7 @@ defineProps<{
 
     <div
         v-if="status"
-        class="mb-4 text-center text-sm font-medium text-green-600"
+        class="rounded-xl bg-lime-100 px-4 py-3 text-center text-sm font-bold text-emerald-800"
     >
         {{ status }}
     </div>
@@ -45,7 +52,7 @@ defineProps<{
     >
         <div class="grid gap-6">
             <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+                <Label for="email" :class="labelClasses">Email address</Label>
                 <Input
                     id="email"
                     type="email"
@@ -55,17 +62,21 @@ defineProps<{
                     :tabindex="1"
                     autocomplete="email"
                     placeholder="email@example.com"
+                    :class="[fieldClasses, 'px-4']"
                 />
                 <InputError :message="errors.email" />
             </div>
 
             <div class="grid gap-2">
                 <div class="flex items-center justify-between">
-                    <Label for="password">Password</Label>
+                    <Label for="password" :class="labelClasses">
+                        Password
+                    </Label>
                     <TextLink
                         v-if="canResetPassword"
                         :href="request()"
-                        class="text-sm"
+                        class="text-xs font-bold"
+                        :class="linkClasses"
                         :tabindex="5"
                     >
                         Forgot your password?
@@ -78,20 +89,28 @@ defineProps<{
                     :tabindex="2"
                     autocomplete="current-password"
                     placeholder="Password"
+                    :class="[fieldClasses, 'pl-4']"
                 />
                 <InputError :message="errors.password" />
             </div>
 
             <div class="flex items-center justify-between">
                 <Label for="remember" class="flex items-center space-x-3">
-                    <Checkbox id="remember" name="remember" :tabindex="3" />
-                    <span>Remember me</span>
+                    <Checkbox
+                        id="remember"
+                        name="remember"
+                        :tabindex="3"
+                        class="border-stone-400 bg-white data-[state=checked]:border-stone-900 data-[state=checked]:bg-stone-900 dark:border-stone-400 dark:bg-white dark:data-[state=checked]:border-stone-900 dark:data-[state=checked]:bg-stone-900"
+                    />
+                    <span class="text-sm font-semibold text-stone-700">
+                        Remember me
+                    </span>
                 </Label>
             </div>
 
             <Button
                 type="submit"
-                class="mt-4 w-full"
+                class="mt-2 h-12 w-full rounded-full bg-stone-900 text-sm font-bold text-white shadow-none hover:bg-stone-800 dark:bg-stone-900 dark:text-white dark:hover:bg-stone-800"
                 :tabindex="4"
                 :disabled="processing"
                 data-test="login-button"
@@ -102,10 +121,10 @@ defineProps<{
         </div>
     </Form>
 
-    <p class="text-center text-sm text-muted-foreground">
+    <p class="text-center text-sm text-stone-600">
         New to EventRadar?
-        <TextLink href="/register" class="font-medium"
-            >Create an account</TextLink
-        >
+        <TextLink href="/register" class="font-bold" :class="linkClasses">
+            Create an account
+        </TextLink>
     </p>
 </template>

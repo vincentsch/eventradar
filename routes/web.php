@@ -26,6 +26,9 @@ Route::get('events/{event}', [EventController::class, 'show'])->name('events.sho
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('events/{event}/attendance', [AttendanceController::class, 'begin'])
         ->name('attendance.begin');
+    Route::get('events/{event}/attendance/status', [AttendanceController::class, 'status'])
+        ->middleware('throttle:60,1')
+        ->name('attendance.status');
     Route::put('events/{event}/attendance', [AttendanceController::class, 'store'])
         ->middleware('throttle:20,1')
         ->name('attendance.store');

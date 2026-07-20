@@ -182,7 +182,7 @@ defineExpose({ resetFilters });
                 </p>
                 <button
                     type="button"
-                    class="inline-flex h-9 items-center rounded-full px-3.5 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                    class="inline-flex h-9 cursor-pointer items-center rounded-full px-3.5 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                     @click="clearDateRange"
                 >
                     Clear
@@ -198,14 +198,14 @@ defineExpose({ resetFilters });
             <span class="font-bold text-stone-900">{{ customRangeLabel }}</span>
             <button
                 type="button"
-                class="rounded-full font-bold text-blue-700 underline-offset-2 transition-colors hover:text-blue-900 hover:underline focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                class="cursor-pointer rounded-full font-bold text-blue-700 underline-offset-2 transition-colors hover:text-blue-900 hover:underline focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                 @click="openRangePanel"
             >
                 Edit dates
             </button>
             <button
                 type="button"
-                class="rounded-full font-bold text-stone-500 underline-offset-2 transition-colors hover:text-stone-900 hover:underline focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                class="cursor-pointer rounded-full font-bold text-stone-500 underline-offset-2 transition-colors hover:text-stone-900 hover:underline focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                 @click="clearDateRange"
             >
                 Clear
@@ -235,7 +235,7 @@ defineExpose({ resetFilters });
                 <button
                     v-if="hasClearableFilters"
                     type="button"
-                    class="inline-flex h-10 items-center rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
+                    class="inline-flex h-10 cursor-pointer items-center rounded-full px-4 text-xs font-bold text-stone-600 transition-colors hover:bg-stone-900/5 hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                     @click="clearFilters"
                 >
                     Clear filters

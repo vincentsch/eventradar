@@ -10,11 +10,7 @@
     <tr>
         <td align="center">
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;">
-                <tr>
-                    <td style="padding:0 4px 20px;font-size:20px;font-weight:800;letter-spacing:-0.4px;">
-                        <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#f4510b;vertical-align:-1px;margin-right:8px;"></span>EventRadar
-                    </td>
-                </tr>
+                @include('mail.partials.brand-header')
                 <tr>
                     <td style="overflow:hidden;border:1px solid #ded8cd;border-radius:24px;background:#fffdf8;box-shadow:0 10px 32px rgba(28,25,23,0.08);">
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
@@ -23,7 +19,7 @@
                                     <div style="margin-bottom:14px;color:#f4510b;font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;">Attendance confirmed</div>
                                     <h1 style="margin:0;font-size:34px;line-height:1.08;letter-spacing:-1.2px;">You are on the list.</h1>
                                     <p style="margin:16px 0 0;color:#57534e;font-size:16px;line-height:1.6;">
-                                        Hi {{ $attendance->user->name }}, your status for <strong style="color:#1c1917;">{{ $eventDetails['title'] }}</strong> is {{ $eventDetails['intent'] }}.
+                                        Hi {{ $attendance->user->name }}, you are marked as <strong style="color:#1c1917;">{{ $eventDetails['intent'] }}</strong> for <strong style="color:#1c1917;">{{ $eventDetails['title'] }}</strong>. Everything you need is below.
                                     </p>
                                 </td>
                             </tr>
@@ -47,11 +43,12 @@
                     </td>
                 </tr>
                 <tr>
-                    <td style="padding:20px 8px;color:#78716c;font-size:12px;line-height:1.6;">
+                    <td style="padding:20px 8px 6px;color:#78716c;font-size:12px;line-height:1.6;">
                         You will receive reminders three days and 24 hours before the event. Changed your mind?
                         <a href="{{ $cancelUrl }}" style="color:#57534e;text-decoration:underline;">Review or cancel your attendance</a>.
                     </td>
                 </tr>
+                @include('mail.partials.brand-footer')
             </table>
         </td>
     </tr>

@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
-import { BellRing, Check, Users } from '@lucide/vue';
-import { computed } from 'vue';
-import { Toaster } from '@/components/ui/sonner';
+import {
+    ArrowLeft,
+    BellRing,
+    CalendarDays,
+    Check,
+    Expand,
+    MapPin,
+    Ticket,
+    UserRound,
+    Users,
+} from '@lucide/vue';
+import { computed, ref } from 'vue';
+import ImageLightbox from '@/components/public/ImageLightbox.vue';
 import type { Auth } from '@/types';
 
 interface EventImage {
@@ -85,73 +95,192 @@ const location = computed(() =>
               .filter(Boolean)
               .join(', '),
 );
+
+const typeLabel = computed(
+    () => props.event.type.charAt(0).toUpperCase() + props.event.type.slice(1),
+);
+
+const lightboxImages = computed(() =>
+    props.event.images.map((image) => ({ src: image.path, alt: image.alt })),
+);
+const lightboxIndex = ref<number | null>(null);
+
+// With an odd number of photos the first one becomes a full-width hero,
+// so a single image and any trailing pair both fill the grid cleanly.
+const heroSpansRow = computed(() => props.event.images.length % 2 === 1);
+
+const galleryItemClasses = (index: number) =>
+    heroSpansRow.value && index === 0
+        ? 'aspect-[2/1] sm:col-span-2'
+        : 'aspect-[4/3]';
 </script>
 
 <template>
     <Head :title="event.title" />
 
-    <article class="mx-auto flex max-w-5xl flex-col gap-8 p-4 sm:p-8">
-        <Link href="/" class="text-sm text-primary hover:underline">
-            ← Back to events
+    <article
+        class="mx-auto w-full max-w-5xl px-4 pt-6 pb-20 sm:px-6 lg:px-8 lg:pt-8"
+    >
+        <Link
+            href="/"
+            class="inline-flex items-center gap-1.5 rounded-full py-1 text-sm font-bold text-stone-600 transition-colors hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none"
+        >
+            <ArrowLeft class="size-4" aria-hidden="true" />
+            Back to events
         </Link>
 
-        <div class="grid gap-4 sm:grid-cols-2">
-            <img
-                v-for="image in event.images"
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <button
+                v-for="(image, index) in event.images"
                 :key="image.path"
-                :src="image.path"
-                :alt="image.alt"
-                :width="image.width"
-                :height="image.height"
-                class="aspect-[4/3] h-full w-full rounded-xl object-cover"
-            />
+                type="button"
+                :aria-label="`View photo ${index + 1} full size`"
+                class="group relative cursor-zoom-in overflow-hidden rounded-2xl bg-stone-200 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none"
+                :class="galleryItemClasses(index)"
+                @click="lightboxIndex = index"
+            >
+                <img
+                    :src="image.path"
+                    :alt="image.alt"
+                    :width="image.width"
+                    :height="image.height"
+                    :loading="index === 0 ? 'eager' : 'lazy'"
+                    decoding="async"
+                    class="h-full w-full object-cover"
+                />
+                <span
+                    class="absolute right-3 bottom-3 grid size-9 place-items-center rounded-full bg-stone-950/50 text-white opacity-80 backdrop-blur-sm transition-opacity group-hover:opacity-100"
+                    aria-hidden="true"
+                >
+                    <Expand class="size-4" />
+                </span>
+            </button>
         </div>
 
-        <header class="space-y-4">
-            <p
-                class="text-sm font-medium tracking-wide text-muted-foreground uppercase"
-            >
-                {{ event.type }} · {{ event.status }}
+        <header class="mt-8 max-w-3xl">
+            <p class="flex flex-wrap items-center gap-2">
+                <span
+                    class="text-[11px] font-extrabold tracking-widest text-blue-700 uppercase"
+                >
+                    {{ typeLabel }}
+                </span>
+                <span
+                    v-if="event.status === 'sold_out'"
+                    class="rounded-full bg-orange-600/10 px-2 py-0.5 text-[10px] font-black tracking-widest text-orange-700 uppercase"
+                >
+                    Sold out
+                </span>
             </p>
-            <h1 class="text-4xl font-semibold tracking-tight">
+            <h1
+                class="mt-2 text-4xl font-extrabold tracking-tight text-stone-900 sm:text-5xl"
+            >
                 {{ event.title }}
             </h1>
-            <p class="max-w-3xl text-lg leading-8 text-muted-foreground">
+            <p class="mt-4 text-base leading-relaxed text-stone-600 sm:text-lg">
                 {{ event.description }}
             </p>
+            <ul
+                v-if="event.tags.length"
+                class="mt-4 flex flex-wrap gap-1.5"
+                aria-label="Tags"
+            >
+                <li
+                    v-for="tag in event.tags"
+                    :key="tag"
+                    class="rounded-full px-2.5 py-1 text-[11px] font-bold text-stone-600 ring-1 ring-stone-900/10"
+                >
+                    {{ tag }}
+                </li>
+            </ul>
         </header>
 
         <dl
-            class="grid gap-6 rounded-2xl border border-stone-900/10 bg-white/70 p-6 sm:grid-cols-2"
+            class="mt-8 grid gap-6 rounded-3xl border border-stone-900/10 bg-[#fffdf8] p-6 shadow-sm shadow-stone-900/5 sm:grid-cols-2 sm:p-8"
         >
-            <div>
-                <dt class="text-sm font-medium">When</dt>
-                <dd class="mt-1 text-sm text-muted-foreground">
-                    {{ formatDateTime(event.starts_at) }}
-                </dd>
+            <div class="flex gap-3.5">
+                <span
+                    class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f4f0e8]"
+                    aria-hidden="true"
+                >
+                    <CalendarDays class="size-4 text-stone-600" />
+                </span>
+                <div class="min-w-0">
+                    <dt
+                        class="text-[11px] font-black tracking-widest text-stone-500 uppercase"
+                    >
+                        When
+                    </dt>
+                    <dd
+                        class="mt-1 text-sm leading-relaxed font-semibold text-stone-900"
+                    >
+                        {{ formatDateTime(event.starts_at) }}
+                    </dd>
+                </div>
             </div>
-            <div>
-                <dt class="text-sm font-medium">Where</dt>
-                <dd class="mt-1 text-sm text-muted-foreground">
-                    {{ location }}
-                </dd>
+            <div class="flex gap-3.5">
+                <span
+                    class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f4f0e8]"
+                    aria-hidden="true"
+                >
+                    <MapPin class="size-4 text-stone-600" />
+                </span>
+                <div class="min-w-0">
+                    <dt
+                        class="text-[11px] font-black tracking-widest text-stone-500 uppercase"
+                    >
+                        Where
+                    </dt>
+                    <dd
+                        class="mt-1 text-sm leading-relaxed font-semibold text-stone-900"
+                    >
+                        {{ location }}
+                    </dd>
+                </div>
             </div>
-            <div>
-                <dt class="text-sm font-medium">Organizer</dt>
-                <dd class="mt-1 text-sm text-muted-foreground">
-                    {{ event.organizer_name }}
-                </dd>
+            <div class="flex gap-3.5">
+                <span
+                    class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f4f0e8]"
+                    aria-hidden="true"
+                >
+                    <UserRound class="size-4 text-stone-600" />
+                </span>
+                <div class="min-w-0">
+                    <dt
+                        class="text-[11px] font-black tracking-widest text-stone-500 uppercase"
+                    >
+                        Organizer
+                    </dt>
+                    <dd
+                        class="mt-1 text-sm leading-relaxed font-semibold text-stone-900"
+                    >
+                        {{ event.organizer_name }}
+                    </dd>
+                </div>
             </div>
-            <div v-if="event.minimum_price !== null">
-                <dt class="text-sm font-medium">Price from</dt>
-                <dd class="mt-1 text-sm text-muted-foreground">
-                    {{ event.minimum_price }} {{ event.currency_code }}
-                </dd>
+            <div v-if="event.minimum_price !== null" class="flex gap-3.5">
+                <span
+                    class="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f4f0e8]"
+                    aria-hidden="true"
+                >
+                    <Ticket class="size-4 text-stone-600" />
+                </span>
+                <div class="min-w-0">
+                    <dt
+                        class="text-[11px] font-black tracking-widest text-stone-500 uppercase"
+                    >
+                        Price from
+                    </dt>
+                    <dd
+                        class="mt-1 text-sm leading-relaxed font-semibold text-stone-900"
+                    >
+                        {{ event.minimum_price }} {{ event.currency_code }}
+                    </dd>
+                </div>
             </div>
         </dl>
 
         <section
-            class="grid gap-8 rounded-3xl bg-stone-900 p-6 text-white sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.75fr)]"
+            class="mt-8 grid gap-8 rounded-3xl bg-stone-900 p-6 text-white sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.75fr)]"
         >
             <div>
                 <p
@@ -178,7 +307,7 @@ const location = computed(() =>
                         <input type="hidden" name="intent" value="interested" />
                         <button
                             type="submit"
-                            class="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 ring-white/30 transition hover:bg-white/10"
+                            class="inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 ring-white/30 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                             :class="
                                 attendance.viewer_intent === 'interested'
                                     ? 'bg-white text-stone-900 hover:bg-stone-100'
@@ -199,7 +328,7 @@ const location = computed(() =>
                         <input type="hidden" name="intent" value="going" />
                         <button
                             type="submit"
-                            class="inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 ring-white/30 transition hover:bg-white/10"
+                            class="inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-3 text-sm font-bold ring-1 ring-white/30 transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                             :class="
                                 attendance.viewer_intent === 'going'
                                     ? 'bg-lime-300 text-stone-900 ring-0 hover:bg-lime-200'
@@ -220,7 +349,7 @@ const location = computed(() =>
                     >
                         <button
                             type="submit"
-                            class="rounded-full px-4 py-3 text-sm font-bold text-stone-300 hover:text-white"
+                            class="cursor-pointer rounded-full px-4 py-3 text-sm font-bold text-stone-300 transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                         >
                             Leave list
                         </button>
@@ -230,9 +359,9 @@ const location = computed(() =>
                 <Link
                     v-else
                     :href="`/events/${event.id}/attendance`"
-                    class="mt-6 inline-flex items-center gap-2 rounded-full bg-lime-300 px-5 py-3 text-sm font-extrabold text-stone-900 hover:bg-lime-200"
+                    class="mt-6 inline-flex items-center gap-2 rounded-full bg-lime-300 px-5 py-3 text-sm font-extrabold text-stone-900 transition-colors hover:bg-lime-200 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                 >
-                    <BellRing class="size-4" />
+                    <BellRing class="size-4" aria-hidden="true" />
                     Log in to join the list
                 </Link>
             </div>
@@ -240,7 +369,8 @@ const location = computed(() =>
             <div class="rounded-2xl bg-white/8 p-5 ring-1 ring-white/10">
                 <div class="flex items-center justify-between gap-4">
                     <p class="flex items-center gap-2 font-bold">
-                        <Users class="size-4" /> Attendee list
+                        <Users class="size-4" aria-hidden="true" />
+                        Attendee list
                     </p>
                     <span class="text-sm text-stone-300">
                         {{ attendance.counts.total }} total
@@ -256,10 +386,10 @@ const location = computed(() =>
                         :key="`${attendee.name}-${attendee.intent}`"
                         class="flex items-center justify-between gap-4 text-sm"
                     >
-                        <span>{{ attendee.name }}</span>
-                        <span class="text-xs text-stone-400">{{
-                            attendee.intent
-                        }}</span>
+                        <span class="truncate">{{ attendee.name }}</span>
+                        <span class="shrink-0 text-xs text-stone-400">
+                            {{ attendee.intent }}
+                        </span>
                     </li>
                 </ul>
                 <p v-else class="mt-4 text-sm text-stone-400">
@@ -267,6 +397,7 @@ const location = computed(() =>
                 </p>
             </div>
         </section>
+
+        <ImageLightbox v-model="lightboxIndex" :images="lightboxImages" />
     </article>
-    <Toaster />
 </template>

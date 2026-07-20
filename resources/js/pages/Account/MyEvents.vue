@@ -112,19 +112,24 @@ const formatStart = (event: EventCard) =>
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <p
-                                    class="text-[11px] font-black tracking-widest text-blue-700 uppercase"
+                                    class="text-[11px] font-black tracking-widest text-blue-700 capitalize uppercase"
                                 >
                                     {{ attendance.event.type }}
                                 </p>
                                 <Link
                                     :href="`/events/${attendance.event.id}`"
-                                    class="mt-1 block text-xl leading-tight font-extrabold hover:underline"
+                                    class="mt-1 block rounded-sm text-xl leading-tight font-extrabold underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2 focus-visible:outline-none"
                                 >
                                     {{ attendance.event.title }}
                                 </Link>
                             </div>
                             <span
-                                class="shrink-0 rounded-full bg-lime-200 px-2.5 py-1 text-[11px] font-black uppercase"
+                                class="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black uppercase"
+                                :class="
+                                    attendance.intent === 'going'
+                                        ? 'bg-lime-200 text-stone-900'
+                                        : 'bg-stone-900/10 text-stone-700'
+                                "
                             >
                                 {{ attendance.intent }}
                             </span>
@@ -159,7 +164,7 @@ const formatStart = (event: EventCard) =>
                                 />
                                 <button
                                     type="submit"
-                                    class="rounded-full px-3 py-2 text-xs font-bold ring-1 ring-stone-900/15 hover:bg-white"
+                                    class="cursor-pointer rounded-full px-3 py-2 text-xs font-bold ring-1 ring-stone-900/15 transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                                     :class="
                                         attendance.intent === 'interested'
                                             ? 'bg-stone-900 text-white hover:bg-stone-800'
@@ -180,10 +185,10 @@ const formatStart = (event: EventCard) =>
                                 />
                                 <button
                                     type="submit"
-                                    class="rounded-full px-3 py-2 text-xs font-bold ring-1 ring-stone-900/15 hover:bg-white"
+                                    class="cursor-pointer rounded-full px-3 py-2 text-xs font-bold ring-1 ring-stone-900/15 transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                                     :class="
                                         attendance.intent === 'going'
-                                            ? 'bg-stone-900 text-white hover:bg-stone-800'
+                                            ? 'bg-lime-300 text-stone-900 ring-lime-300 hover:bg-lime-200'
                                             : ''
                                     "
                                 >
@@ -197,9 +202,12 @@ const formatStart = (event: EventCard) =>
                             >
                                 <button
                                     type="submit"
-                                    class="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50"
+                                    class="inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
                                 >
-                                    <Trash2 class="size-3.5" />
+                                    <Trash2
+                                        class="size-3.5"
+                                        aria-hidden="true"
+                                    />
                                     Leave list
                                 </button>
                             </Form>
@@ -217,7 +225,7 @@ const formatStart = (event: EventCard) =>
             <Link
                 v-if="attendances.prev_page_url"
                 :href="attendances.prev_page_url"
-                class="rounded-full bg-white px-4 py-2 text-sm font-bold ring-1 ring-stone-900/10"
+                class="rounded-full bg-white px-4 py-2 text-sm font-bold ring-1 ring-stone-900/10 transition-colors hover:ring-stone-900/30 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
             >
                 Previous
             </Link>
@@ -229,7 +237,7 @@ const formatStart = (event: EventCard) =>
             <Link
                 v-if="attendances.next_page_url"
                 :href="attendances.next_page_url"
-                class="rounded-full bg-white px-4 py-2 text-sm font-bold ring-1 ring-stone-900/10"
+                class="rounded-full bg-white px-4 py-2 text-sm font-bold ring-1 ring-stone-900/10 transition-colors hover:ring-stone-900/30 focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:outline-none"
             >
                 Next
             </Link>

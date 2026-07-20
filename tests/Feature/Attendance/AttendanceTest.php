@@ -60,6 +60,30 @@ it('updates an active intent without duplicating attendance or confirmation', fu
     Queue::assertPushed(SendAttendanceConfirmation::class, 1);
 });
 
+it('returns only the signed-in users intent for the event modal', function () {
+    Queue::fake();
+    $attendee = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $event = Event::factory()->published()->create([
+        'starts_at' => now('UTC')->addDays(10),
+        'ends_at' => now('UTC')->addDays(10)->addHours(2),
+        'starts_on_local' => now('UTC')->addDays(10)->toDateString(),
+    ]);
+
+    $this->actingAs($attendee)
+        ->put("/events/{$event->id}/attendance", ['intent' => 'interested']);
+
+    $this->actingAs($attendee)
+        ->getJson("/events/{$event->id}/attendance/status")
+        ->assertOk()
+        ->assertExactJson(['intent' => 'interested']);
+
+    $this->actingAs($otherUser)
+        ->getJson("/events/{$event->id}/attendance/status")
+        ->assertOk()
+        ->assertExactJson(['intent' => null]);
+});
+
 it('cancels from the account and skips outstanding delivery work', function () {
     Queue::fake();
     $user = User::factory()->create();

@@ -47,7 +47,34 @@ class EmailVerificationTest extends TestCase
         Event::assertDispatched(Verified::class);
 
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
-        $response->assertRedirect(route('account', absolute: false).'?verified=1');
+        // With no intended URL, a freshly verified account lands on public
+        // discovery rather than an empty personal area.
+        $response->assertRedirect(route('home', absolute: false).'?verified=1');
+    }
+
+    public function test_registration_and_verification_preserve_the_event_that_started_the_flow(): void
+    {
+        $eventId = '019f8087-8c57-7126-948b-d5cb1c640789';
+
+        $this->get(route('attendance.begin', ['event' => $eventId]))
+            ->assertRedirect(route('login', absolute: false));
+
+        $this->post('/register', [
+            'name' => 'Event Guest',
+            'email' => 'guest@example.test',
+            'password' => 'correct-horse-battery-staple',
+            'password_confirmation' => 'correct-horse-battery-staple',
+        ])->assertRedirect(route('verification.notice', absolute: false));
+
+        $user = User::query()->where('email', 'guest@example.test')->firstOrFail();
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(60),
+            ['id' => $user->id, 'hash' => sha1($user->email)],
+        );
+
+        $this->get($verificationUrl)
+            ->assertRedirect(route('attendance.begin', ['event' => $eventId], absolute: false));
     }
 
     public function test_email_is_not_verified_with_invalid_hash()
@@ -86,7 +113,7 @@ class EmailVerificationTest extends TestCase
         $this->assertFalse($user->fresh()->hasVerifiedEmail());
     }
 
-    public function test_verified_user_is_redirected_to_dashboard_from_verification_prompt(): void
+    public function test_verified_user_is_redirected_home_from_verification_prompt(): void
     {
         $user = User::factory()->create();
 
@@ -95,7 +122,7 @@ class EmailVerificationTest extends TestCase
         $response = $this->actingAs($user)->get(route('verification.notice'));
 
         Event::assertNotDispatched(Verified::class);
-        $response->assertRedirect(route('account', absolute: false));
+        $response->assertRedirect(route('home', absolute: false));
     }
 
     public function test_already_verified_user_visiting_verification_link_is_redirected_without_firing_event_again(): void
@@ -111,7 +138,7 @@ class EmailVerificationTest extends TestCase
         );
 
         $this->actingAs($user)->get($verificationUrl)
-            ->assertRedirect(route('account', absolute: false).'?verified=1');
+            ->assertRedirect(route('home', absolute: false).'?verified=1');
 
         Event::assertNotDispatched(Verified::class);
         $this->assertTrue($user->fresh()->hasVerifiedEmail());

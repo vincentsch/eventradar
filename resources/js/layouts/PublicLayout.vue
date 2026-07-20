@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import PublicBrand from '@/components/public/PublicBrand.vue';
 import PublicHeader from '@/components/public/PublicHeader.vue';
 import { usePublicViewLinks } from '@/components/public/usePublicViewLinks';
+import { Toaster } from '@/components/ui/sonner';
 
 const page = usePage();
 const { publicViewHref } = usePublicViewLinks();
@@ -64,5 +65,7 @@ const footerLinkClasses =
                 </nav>
             </div>
         </footer>
+
+        <Toaster />
     </div>
 </template>

@@ -8,6 +8,8 @@ use App\Services\Search\EventSearchGateway;
 use App\Services\Search\MeilisearchEventSearchGateway;
 use Carbon\CarbonImmutable;
 use GuzzleHttp\Client as HttpClient;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -45,6 +47,26 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureBrandedMail();
+    }
+
+    /**
+     * Send the email-verification message through the branded template
+     * instead of the default framework theme.
+     */
+    protected function configureBrandedMail(): void
+    {
+        VerifyEmail::toMailUsing(function (object $notifiable, string $url): MailMessage {
+            $name = $notifiable->name ?? 'there';
+
+            return (new MailMessage)
+                ->subject('Verify your EventRadar email')
+                ->view(['mail.verify-email', 'mail.verify-email-text'], [
+                    'name' => $name,
+                    'url' => $url,
+                    'expiresInMinutes' => (int) config('auth.verification.expire', 60),
+                ]);
+        });
     }
 
     /**
