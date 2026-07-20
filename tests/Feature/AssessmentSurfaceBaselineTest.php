@@ -26,7 +26,7 @@ it('adds defensive browser headers to web responses', function () {
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('X-Frame-Options', 'DENY')
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-        ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        ->assertHeader('Permissions-Policy', 'geolocation=()');
 });
 
 it('renders each named public visual through its intended Inertia component', function (string $routeName, string $component) {
