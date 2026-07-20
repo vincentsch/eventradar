@@ -1,70 +1,59 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import PublicBrand from '@/components/public/PublicBrand.vue';
+import PublicHeader from '@/components/public/PublicHeader.vue';
 
 const page = usePage();
 
-const isDiscover = computed(
-    () => page.url === '/' || page.url.startsWith('/events-visual-1'),
-);
-const isNearAndSoon = computed(() => page.url.startsWith('/events-visual-2'));
+// Near & soon is a full-height map workspace; the footer only belongs on
+// document-style pages such as Discover and the future event detail.
+const showFooter = computed(() => !page.url.startsWith('/events-visual-2'));
+
+const footerLinkClasses =
+    'rounded-full px-1 py-0.5 whitespace-nowrap transition-colors hover:text-stone-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2';
 </script>
 
 <template>
-    <div class="min-h-screen bg-background text-foreground">
+    <div
+        class="flex min-h-screen flex-col overflow-x-clip bg-[#f4f0e8] text-stone-900 antialiased selection:bg-lime-200 selection:text-stone-900"
+    >
         <a
             href="#public-content"
-            class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:shadow"
+            class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-full focus:bg-stone-900 focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg"
         >
             Skip to content
         </a>
 
-        <header class="border-b bg-background">
-            <div
-                class="mx-auto flex min-h-16 max-w-screen-2xl items-center gap-6 px-4 sm:px-6 lg:px-8"
-            >
-                <Link href="/" class="font-semibold">Event Visuals</Link>
+        <PublicHeader />
 
-                <nav
-                    aria-label="Public event views"
-                    class="ml-auto flex items-center gap-1"
-                >
-                    <Link
-                        href="/"
-                        class="rounded-md px-3 py-2 text-sm"
-                        :class="
-                            isDiscover
-                                ? 'bg-muted font-medium text-foreground'
-                                : 'text-muted-foreground hover:text-foreground'
-                        "
-                        :aria-current="isDiscover ? 'page' : undefined"
-                    >
-                        Discover
-                    </Link>
-                    <Link
-                        href="/events-visual-2"
-                        class="rounded-md px-3 py-2 text-sm"
-                        :class="
-                            isNearAndSoon
-                                ? 'bg-muted font-medium text-foreground'
-                                : 'text-muted-foreground hover:text-foreground'
-                        "
-                        :aria-current="isNearAndSoon ? 'page' : undefined"
-                    >
-                        Near &amp; soon
-                    </Link>
-                    <Link
-                        href="/login"
-                        class="ml-2 rounded-md border px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Admin
-                    </Link>
-                </nav>
-            </div>
-        </header>
-
-        <main id="public-content">
+        <main id="public-content" class="flex flex-1 flex-col">
             <slot />
         </main>
+
+        <footer
+            v-if="showFooter"
+            class="border-t border-stone-900/10 bg-[#f4f0e8]"
+        >
+            <div
+                class="mx-auto flex max-w-screen-2xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8"
+            >
+                <PublicBrand />
+                <p class="max-w-md text-xs leading-relaxed text-stone-500">
+                    One global catalogue, two ways in: an editorial grid and a
+                    live map, always in each event's own local time.
+                </p>
+                <nav
+                    aria-label="Footer"
+                    class="flex items-center gap-4 text-xs font-bold text-stone-600"
+                >
+                    <Link href="/" :class="footerLinkClasses">Discover</Link>
+                    <Link href="/events-visual-2" :class="footerLinkClasses">
+                        Near &amp; soon
+                    </Link>
+                    <Link href="/login" :class="footerLinkClasses">Admin</Link>
+                </nav>
+            </div>
+        </footer>
     </div>
 </template>
