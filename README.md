@@ -5,7 +5,7 @@
 <h1 align="center">EventRadar</h1>
 
 <p align="center">
-  Discover global events through an editorial card view or a map-based agenda.
+  Discover global events in a card view or on an interactive map.
 </p>
 
 <p align="center">
@@ -14,10 +14,10 @@
   <a href="CODING_TEST.md">Original assessment brief</a>
 </p>
 
-EventRadar is a Laravel and Inertia application built against a realistic 1.25-million-row event
-catalogue. It supports event-local timezones, local image galleries, human-readable addresses,
-automatic filtering, account-backed attendance, confirmation email, and durable reminders three
-days and 24 hours before an event.
+EventRadar is an event discovery application built with Laravel, Inertia, Vue, and Tailwind CSS.
+It uses the supplied catalogue of 1.25 million events and adds everything needed for a complete
+public experience: search, filters, maps, local image galleries, clear event times and locations,
+user accounts, attendance lists, confirmation emails, and event reminders.
 
 <p align="center">
   <img src="docs/screenshots/discover-desktop.webp" alt="EventRadar Discover view" width="820">
@@ -27,117 +27,150 @@ days and 24 hours before an event.
   <img src="docs/screenshots/map-desktop.webp" alt="EventRadar Near and Soon map view" width="820">
 </p>
 
-## What it does
+## What you can do
 
-- Offers two distinct public experiences: a card-led Discover view and a map with a chronological
-  agenda.
-- Applies text, category, location, and date filters automatically while keeping the complete
-  database-backed feed browsable.
-- Presents UTC instants in each event's IANA timezone and stores an indexed event-local date.
-- Serves two or more local images per event, with 2 to 8 validated uploads for managed events.
-- Lets verified users choose Interested or Going, manage their events, and cancel safely.
-- Sends queued confirmation and reminder emails with signed cancellation links.
-- Keeps operations separate in an authenticated admin dashboard with complete event CRUD, explicit
-  pagination, address lookup, image management, and attendee lists.
-- Uses Tailwind CSS and restrained transitions for state feedback, with reduced-motion support.
+- Browse events as cards or explore them on a map with a list ordered by time.
+- Search by text and filter by category, location, or date. Filters apply automatically.
+- Open an event to see its image gallery, local date and time, venue, location, and attendee list.
+- Click Show on map when you need the full address and a close-up map.
+- Create an account and mark yourself as Interested or Going.
+- Review or cancel your choices from the My Events page.
+- Receive a confirmation email, followed by reminders three days and 24 hours before the event.
+- Log in as an administrator to create, view, edit, and remove events, manage images, and inspect
+  attendee lists.
 
-## Architecture
+The interface uses Tailwind CSS. Animations are limited to useful feedback such as the event modal,
+loading indicators, dropdowns, and small hover effects. Reduced-motion settings are respected.
 
-MySQL is the canonical data store. Meilisearch is a replaceable discovery index that returns
-compact, ordered event IDs. Laravel rechecks public visibility and loads the page data for those IDs
-from MySQL, so the search index never becomes the source of event content. Admin browsing uses MySQL
-directly. Redis and Horizon process queued confirmation and reminder emails, while Mapbox provides
-map tiles and deliberate address lookup.
+## How the app works
+
+MySQL holds the complete and trusted copy of every event, user, attendance choice, and email status.
+Meilisearch makes public text search and filtering fast. It returns the matching event IDs, and
+Laravel then loads the current event information from MySQL. This means the search service can be
+rebuilt without losing or changing the real event data.
+
+The admin event list reads directly from MySQL, so an administrator can page through the entire
+catalogue. Redis and Laravel Horizon handle email and search index updates in the background.
+Mapbox provides the public maps and address lookup.
 
 ## Key decisions
 
-### Reproducible development with Sail
+### One local setup with Laravel Sail
 
-Laravel Sail runs PHP, MySQL, Redis, Meilisearch, Horizon, the scheduler, Mailpit, and Vite as one
-documented development environment. A clean checkout does not need host-installed service
-dependencies.
+Laravel Sail starts PHP, MySQL, Redis, Meilisearch, Horizon, the once-per-minute task runner,
+Mailpit, and Vite with Docker. This gives every developer the same setup without installing each
+service separately.
 
-### MySQL as the source of truth
+### MySQL instead of SQLite
 
-MySQL owns relational event data, indexed admin pagination, users, attendance, and the email
-delivery ledger. It is a more predictable operational fit than SQLite for concurrent web, queue,
-and scheduled workloads over the supplied catalogue size.
+SQLite can handle many applications, but MySQL is a better fit here. The application has 1.25
+million events, multiple web requests, background jobs, and scheduled email work accessing the
+database at the same time. MySQL also gives the admin area reliable filtering and pagination over
+the complete catalogue.
 
-### Meilisearch as bounded discovery
+### Meilisearch for fast public search
 
-Meilisearch provides typo-tolerant relevance, facets, and geographic discovery. Its configured hit
-window is intentional: public search is discovery, while the default public feed and complete admin
-catalogue remain MySQL-backed and fully pageable.
+Searching and combining several filters across 1.25 million events is not a good job for normal
+database queries on every keystroke. Meilisearch provides fast full-text search, typo tolerance,
+location filtering, and map searches.
 
-### Separate public, account, and admin experiences
+Meilisearch is only used to discover matching events. The unfiltered public feed and the complete
+admin list still come from MySQL, so they are not limited by the maximum number of search results.
 
-The visual public application is designed for discovery. `/my-events` is a small attendee
-workspace, and `/admin` is a deliberately practical operational interface. Administrators and
-normal users are redirected to the appropriate experience after authentication.
+### Separate public, account, and admin areas
 
-### Explicit global time handling
+The public pages are designed for discovering events. The My Events page gives normal users a
+simple place to manage their choices. The admin area is a practical workspace for managing the
+event catalogue. After login, administrators and normal users are sent to the area intended for
+them.
 
-Each event stores UTC start and end instants alongside an IANA timezone and the event-local calendar
-date. This makes display, date filtering, rescheduling, and reminder horizons unambiguous.
+### Clear dates and times for global events
 
-### Local images at catalogue scale
+Each event has a named timezone such as `Europe/Berlin`. Its start and end are saved in UTC, which
+is a common global reference time. The application converts them back to the event's own timezone
+for display and date filtering. This also keeps reminder times correct when events are in different
+countries or daylight saving time changes.
 
-Seeded events reuse sixteen curated local two-image sets rather than creating millions of files.
-Admin uploads are decoded, validated, stripped of metadata, resized, and saved as local WebP
-variants. The database stores ordered image records, not external URLs.
+### Local image galleries
 
-### Useful addresses without a million API calls
+Every seeded event has two images. The assessment allows placeholder images to be reused, so the
+1.25 million events share 16 carefully chosen image pairs instead of copying millions of identical
+files. All 32 files are included in this repository and served by the application. There are no
+external image links.
 
-Seeded events use a checked-in gazetteer containing a human-readable place, coordinates, and
-timezone. Managed events use deliberate permanent Mapbox geocoding and store the selected result.
-No page view triggers reverse geocoding for the seed catalogue.
+Administrators can upload between 2 and 8 images for a managed event. Uploads are checked, stripped
+of unnecessary metadata, resized, converted to WebP, and saved in local storage. Images can be
+added, removed, and reordered.
 
-### Account-backed attendance and durable reminders
+### Useful locations without a million Mapbox requests
 
-An account gives attendees a complete way to see, change, and cancel their choice. A revision-bound
-delivery ledger records confirmation and reminder work, while Redis and Horizon process it away
-from web requests. Cancellation or rescheduling invalidates stale pending work, and normal job
-retries do not create a second completed ledger delivery.
+The supplied events originally contain coordinates but not a complete address. During seeding,
+EventRadar matches each event with a known place from a small data file included in the repository.
+That file contains the city, country, coordinates, and timezone. Cards can therefore show a useful
+location immediately without contacting Mapbox for every event.
 
-### Narrow Inertia data contracts
+When an administrator creates or edits an event, they can start typing an address and choose a
+Mapbox suggestion. EventRadar saves the selected address and coordinates. The timezone is chosen
+from a normal dropdown.
 
-Controllers select explicit columns and build page-specific data transfer objects. Raw source
-payloads, owner details, attendee email addresses, and service credentials are never shared as
-general frontend props. Small lazy lookups use Inertia's HTTP helper rather than an unrelated API
-layer.
+Opening an event does not automatically look up its street address. On public event pages, Mapbox's
+address service is contacted only when someone explicitly clicks Show on map and the event does not
+already have a full stored address. The returned address is cached for 90 days. This keeps the
+feature useful without spending Mapbox credits on every page view.
+
+### Attendance and reliable email reminders
+
+A verified account lets a person choose Interested or Going, see that choice later, change it, or
+cancel it. The database stores a separate record for the confirmation email, three-day reminder,
+and 24-hour reminder.
+
+Redis and Horizon send those emails in the background. If an attendance is cancelled or an event
+is rescheduled, old reminders are cancelled and the correct new reminder times are created. Each
+delivery is tracked in the database so retries and overlapping scheduled runs do not create a
+second completed record.
+
+### Only send the browser what it needs
+
+Each page receives only the fields it needs. Internal source data, event-owner details, attendee
+email addresses, and service credentials are not included in public page data. Small requests, such
+as loading attendance status or an address only after the user asks for it, use Inertia's built-in
+request helper.
 
 ## Starting point
 
-The supplied starter is preserved by the `starter` tag. Before extending it, I corrected several
-important baseline problems:
+The original starter application is preserved by the `starter` Git tag. Before adding new
+features, I fixed several problems in the supplied code:
 
-- a misspelled filter handler and date input that did not affect the query;
-- direct browser fetching and automatic infinite scrolling where intentional Inertia navigation was
-  clearer;
-- broad event serialization that could expose raw payload and owner data;
-- a payload-driven SQLite catalogue that lacked the normalized, indexed fields needed by the final
-  application.
+- A misspelled filter handler prevented one filter from working, and the date field did not change
+  the database query.
+- Some data was loaded directly by browser code, bypassing the normal Inertia flow, and the event
+  list used automatic infinite scrolling where clear pagination was more useful.
+- Complete event records were sent to the browser even when the page needed only a few fields. That
+  could expose internal source data and event-owner information.
+- Important event information lived inside a large JSON field in SQLite. I moved the fields the
+  application actually uses into normal MySQL columns so they can be validated, filtered, and
+  indexed efficiently.
 
 ## AI-assisted engineering workflow
 
-I use AI agents throughout the engineering process as my team, with myself as the lead developer.
-They provide investigation, feedback, suggestions, implementation, testing, and review, while I
-make the decisions and remain in control of the product direction, architecture, trade-offs, and
-final code.
+I work with AI agents as an engineering team, with myself as the lead developer. I use them
+throughout the process for investigation, suggestions, implementation, testing, and review. Their
+input helps me move faster, but I make the decisions and remain responsible for the product,
+technical approach, and final code.
 
-Implementation instructions are detailed and specific to the work at hand, including exactly what
-to do, what not to do, and which constraints to preserve. I inspect the resulting code and behavior
-before accepting it. This is agentic engineering, not vibe coding.
+When an agent implements something, I give it detailed instructions about the exact task and its
+limits. I then review the code and test the result before accepting it. I call this agentic
+engineering, not vibe coding.
 
 ## Local setup
 
-Requirements: Docker, Composer, and free ports matching `.env.example`.
+You need Docker and Composer. The ports listed in `.env.example` must also be available.
 
 ```bash
 composer install
 cp .env.example .env
-php artisan key:generate
 ./vendor/bin/sail up -d
+./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate --seed
 ./vendor/bin/sail artisan storage:link
 ./vendor/bin/sail artisan events:search-index
@@ -145,27 +178,29 @@ php artisan key:generate
 ./vendor/bin/sail npm run dev
 ```
 
-The default `dev` profile creates 10,000 deterministic events. The local-only demo administrator is
-`reviewer@example.test` with password `password`. This account exists only when
-`EVENT_SEED_DEMO_ADMIN=true`, as configured in `.env.example`; production should leave it false and
-create an administrator explicitly:
+The normal development seed creates 10,000 repeatable sample events. The local demo administrator
+is `reviewer@example.test` with password `password`. This account is created only when
+`EVENT_SEED_DEMO_ADMIN=true`, which is the default in `.env.example`. Production must set this to
+`false` and create an administrator explicitly:
 
 ```bash
 ./vendor/bin/sail artisan user:make-admin person@example.com
 ```
 
-The command promotes an existing account and verifies it if necessary. If the email does not exist,
-it interactively asks for a name and password and creates a verified administrator. Automated
-deployments can pass `--name` and `--password` non-interactively. Supplying `--password` for an
-existing account intentionally resets that account's password.
+If the email already belongs to a user, the command makes that user an administrator and verifies
+the email address if needed. Otherwise, it asks for a name and password and creates a verified
+administrator. Scripts can provide `--name` and `--password` without interactive questions.
+Providing `--password` for an existing user deliberately changes that user's password.
 
-Mailpit is available on `FORWARD_MAILPIT_DASHBOARD_PORT`. The Sail `horizon` and `scheduler`
-services process confirmation and reminder work without extra terminals.
+Mailpit shows development emails in the browser. Its port is set by
+`FORWARD_MAILPIT_DASHBOARD_PORT`. Sail also starts Horizon and the scheduled task service, so
+confirmation and reminder emails work without opening extra terminals.
 
 ### Seed profiles
 
-Use `smoke` for a quick 500-row reset. The explicit full profile creates 1,250,000 rows and refuses
-to run without a separate acknowledgement:
+Use the `smoke` profile for a quick reset with 500 events. The `full` profile creates all
+1,250,000 events. It requires an extra confirmation setting to prevent someone from starting the
+large seed by accident:
 
 ```bash
 ./vendor/bin/sail shell -c \
@@ -175,47 +210,57 @@ to run without a separate acknowledgement:
   'EVENT_SEED_PROFILE=full EVENT_SEED_ALLOW_FULL=true php artisan migrate:fresh --seed'
 ```
 
-Run `events:search-index` after replacing the catalogue. Normal admin changes enqueue a one-event
-reconciliation and never rebuild the complete index.
+Run `events:search-index` after replacing the whole catalogue. Normal changes made in the admin
+area update only the event that changed. They do not rebuild the complete search index.
 
 ### Verification
 
 ```bash
 ./vendor/bin/sail composer ci:check
-npm run build
+./vendor/bin/sail npm run build
 ./vendor/bin/sail composer test:mysql
 ./vendor/bin/sail composer test:meilisearch
 npm run test:e2e
 ```
 
-The default PHP suite uses isolated SQLite databases for fast tests. The integration suites verify
-the production MySQL and Meilisearch contracts through Sail.
+The main PHP test suite uses small temporary SQLite databases so it runs quickly and independently.
+Separate integration tests exercise the real MySQL and Meilisearch services through Sail. The
+browser tests use Playwright and expect the application to be running on the URL configured in
+`playwright.config.ts`.
 
-See [the development guide](docs/development.md) for seed, database, queue, and legacy-data details.
+See [the development guide](docs/development.md) for more detail about seed data, databases,
+background jobs, and importing the supplied data.
 
 ## Environment
 
-Start from `.env.example`. The application-specific production settings are:
+Copy `.env.example` to `.env` and adjust these groups for production:
 
-- `DB_*` for MySQL 8;
-- `REDIS_*`, `QUEUE_CONNECTION=redis`, and a production Horizon prefix;
-- `MEILISEARCH_HOST`, `MEILISEARCH_KEY`, and `MEILISEARCH_EVENT_INDEX`;
-- `VITE_MAPBOX_ACCESS_TOKEN` for a URL-restricted browser token;
-- `MAPBOX_GEOCODING_TOKEN` for separate server-side permanent geocoding;
-- `MAIL_MAILER=postmark`, `POSTMARK_API_KEY`, and `POSTMARK_MESSAGE_STREAM_ID`;
-- `MAIL_FROM_ADDRESS` and `MAIL_FROM_NAME` for a verified Postmark sender;
-- `APP_PREVENT_INDEXING=true` for the private assessment deployment;
-- `SESSION_SECURE_COOKIE=true` after HTTPS is enabled;
-- `TRUSTED_PROXIES` with only the actual proxy IPs or CIDRs when Cloudflare proxying is enabled.
+- `DB_*` connects Laravel to MySQL.
+- `REDIS_*` and `QUEUE_CONNECTION=redis` connect background jobs to Redis. Give Horizon a
+  production-specific prefix if the Redis server is shared.
+- `MEILISEARCH_HOST`, `MEILISEARCH_KEY`, and `MEILISEARCH_EVENT_INDEX` connect the public
+  search.
+- `VITE_MAPBOX_ACCESS_TOKEN` is the public browser token used for maps. Restrict it to the site's
+  domain in Mapbox.
+- `MAPBOX_GEOCODING_TOKEN` is a separate private server token used to find and save addresses.
+- `MAIL_MAILER=postmark`, `POSTMARK_API_KEY`, and `POSTMARK_MESSAGE_STREAM_ID` enable Postmark.
+- `MAIL_FROM_ADDRESS` and `MAIL_FROM_NAME` set the verified sender shown on emails.
+- `APP_PREVENT_INDEXING=true` asks search engines not to index a temporary assessment deployment.
+- `SESSION_SECURE_COOKIE=true` should be enabled when the site uses HTTPS.
+- `TRUSTED_PROXIES` should contain only the real proxy addresses when the site is behind
+  Cloudflare or another proxy.
 
-Uploaded images use Laravel's `public` disk and require the `public/storage` symlink. The server
-needs Imagick for upload validation, metadata stripping, resizing, and WebP encoding.
+Uploaded images are saved through Laravel's public storage. Run `php artisan storage:link` so the
+web server can serve them. Imagick must be installed so Laravel can check images, remove metadata,
+resize them, and convert them to WebP.
 
 ## Deployment
 
-Deploy as a normal Laravel application with its web root set to `public`, PHP 8.3 or newer, MySQL 8,
-Redis, Imagick, a Horizon process, the Laravel scheduler, and a private Meilisearch instance. Set
-the production environment before the first deployment, including `APP_DEBUG=false` and
+The production server needs PHP 8.3 or newer, MySQL 8, Redis, Imagick, Meilisearch, and a web server
+whose document root points to Laravel's `public` directory. Keep Meilisearch private rather than
+exposing it directly to the internet.
+
+Before the first deployment, configure the production `.env`, set `APP_DEBUG=false`, and set
 `EVENT_SEED_DEMO_ADMIN=false`.
 
 A repeatable deploy script can use:
@@ -231,6 +276,13 @@ php artisan optimize
 php artisan horizon:terminate
 ```
 
-Keep Horizon and the scheduler supervised. Run the initial full seed and `events:search-index`
-outside the normal deployment command because both are deliberate, long-running operations.
-Configure Postmark with a verified sender before testing real email delivery.
+Run `php artisan horizon` as a supervised background process so it restarts if the process or
+server stops. Call Laravel's scheduler once per minute, for example with this cron entry:
+
+```cron
+* * * * * cd /path/to/eventradar && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Create the full seed and run `events:search-index` separately from normal deployments because both
+are deliberate, long-running operations. Configure and verify the Postmark sender before testing
+email with real addresses.
